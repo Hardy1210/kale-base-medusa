@@ -1,7 +1,7 @@
-import { Metadata } from "next"
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { Mona_Sans } from "next/font/google"
 import { getBaseURL } from "@lib/util/env"
+import { SpeedInsights } from "@vercel/speed-insights/next"
+import { Metadata } from "next"
+import { Mona_Sans } from "next/font/google"
 
 import "../styles/globals.css"
 
@@ -20,7 +20,7 @@ const monaSans = Mona_Sans({
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-mode="light" className="antialiased">
+    <html lang="fr" data-mode="light" className="antialiased">
       <body className={`${monaSans.className}`}>
         <main className="relative">{props.children}</main>
         <SpeedInsights />
