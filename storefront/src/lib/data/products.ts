@@ -160,3 +160,40 @@ export const getProductsListWithSort = async function ({
     queryParams,
   }
 }
+
+/**
+ * Search products using Medusa's native search (q parameter)
+ */
+export const searchProducts = async function ({
+  q,
+  countryCode,
+  limit = 12,
+  offset = 0,
+}: {
+  q: string
+  countryCode: string
+  limit?: number
+  offset?: number
+}): Promise<{ products: HttpTypes.StoreProduct[]; count: number }> {
+  const region = await getRegion(countryCode)
+
+  if (!region) {
+    return { products: [], count: 0 }
+  }
+
+  return sdk.client
+    .fetch<{ products: HttpTypes.StoreProduct[]; count: number }>(
+      `/store/products`,
+      {
+        query: {
+          q,
+          limit,
+          offset,
+          region_id: region.id,
+          fields: "*variants.calculated_price",
+        },
+        next: { tags: ["products"] },
+      }
+    )
+    .then(({ products, count }) => ({ products, count }))
+}

@@ -4,18 +4,17 @@ import * as React from "react"
 import * as ReactAria from "react-aria-components"
 import { twJoin } from "tailwind-merge"
 import { useAsyncList } from "react-stately"
-import { Hit } from "meilisearch"
+import { HttpTypes } from "@medusajs/types"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useCountryCode } from "hooks/country-code"
-import { MeiliSearchProductHit, searchClient } from "@lib/search-client"
+import { sdk } from "@lib/config"
 import { getProductPrice } from "@lib/util/get-product-price"
-import { getProductsById } from "@lib/data/products"
 import Thumbnail from "@modules/products/components/thumbnail"
 import { Button } from "@/components/Button"
 import { Input } from "@/components/Forms"
 import { Icon } from "@/components/Icon"
 
-interface ListItem extends Hit<MeiliSearchProductHit> {
+interface ListItem extends HttpTypes.StoreProduct {
   price: {
     calculated_price_number: number
     calculated_price: string
@@ -44,29 +43,23 @@ export const SearchField: React.FC<{
 
   const list = useAsyncList<ListItem>({
     getKey(item) {
-      return item.handle
+      return item.handle!
     },
-    load: async ({ filterText, signal }) => {
-      const results = await searchClient
-        .index("products")
-        .search<MeiliSearchProductHit>(filterText, undefined, {
-          signal,
-        })
-      const medusaProducts = await getProductsById({
-        ids: results.hits.map((h) => h.id),
-        regionId: region!,
+    load: async ({ filterText }) => {
+      if (!filterText || !region) return { items: [], filterText }
+
+      const { products } = await sdk.store.product.list({
+        q: filterText,
+        region_id: region,
+        fields: "*variants.calculated_price",
+        limit: 5,
       })
 
       return {
-        items: results.hits.map((hit) => {
-          const product = medusaProducts.find((p) => p.id === hit.id)
-          return {
-            ...hit,
-            price: getProductPrice({
-              product: product!,
-            }).cheapestPrice,
-          }
-        }),
+        items: products.map((product) => ({
+          ...product,
+          price: getProductPrice({ product }).cheapestPrice,
+        })),
         filterText,
       }
     },
@@ -161,7 +154,7 @@ export const SearchField: React.FC<{
                 <div>
                   <p className="text-base font-normal">{item.title}</p>
                   <p className="text-grayscale-500 text-xs">
-                    {item.variants[0]}
+                    {item.variants?.[0]?.title}
                   </p>
                 </div>
                 <p className="text-base font-semibold ml-auto">
