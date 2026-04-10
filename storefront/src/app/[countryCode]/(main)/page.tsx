@@ -1,10 +1,10 @@
-import { Metadata } from "next"
-import Image from "next/image"
-import { getRegion } from "@lib/data/regions"
-import { getProductTypesList } from "@lib/data/product-types"
+import { CollectionsSection } from "@/components/CollectionsSection"
 import { Layout, LayoutColumn } from "@/components/Layout"
 import { LocalizedLink } from "@/components/LocalizedLink"
-import { CollectionsSection } from "@/components/CollectionsSection"
+import { getProductTypesList } from "@lib/data/product-types"
+import { getRegion } from "@lib/data/regions"
+import { Metadata } from "next"
+import Image from "next/image"
 
 export const metadata: Metadata = {
   title: "Medusa Next.js Starter Template",
