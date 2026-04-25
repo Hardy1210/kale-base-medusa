@@ -40,7 +40,7 @@ export const Header: React.FC = async () => {
           <LayoutColumn>
             <div className="flex justify-between items-center h-18 md:h-21">
               <h1 className="font-medium text-md">
-                <LocalizedLink href="/">SofaSocietyCo.</LocalizedLink>
+                <LocalizedLink href="/">Mi Tienda</LocalizedLink>
               </h1>
               <div className="flex items-center gap-8 max-md:hidden">
                 <LocalizedLink href="/about">About</LocalizedLink>

@@ -17,10 +17,8 @@ const nextConfig = {
         protocol: "http",
         hostname: "localhost",
       },
-      {
-        protocol: "https",
-        hostname: "fashion-starter-demo.s3.eu-central-1.amazonaws.com",
-      },
+      // TODO: reemplazar con el bucket S3 del cliente en producción
+      // { protocol: "https", hostname: "tu-bucket.s3.region.amazonaws.com" },
     ],
   },
 }

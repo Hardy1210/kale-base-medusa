@@ -142,7 +142,7 @@ export default function EmailLayout(
               href={process.env.STOREFRONT_URL || 'http://localhost:8000'}
               className="text-lg mb-18 inline-block text-black"
             >
-              {props.siteTitle || 'SofaSocietyCo.'}
+              {props.siteTitle || 'Mi Tienda'}
             </Link>
             {props.children}
             <Hr className="mt-20 mb-8" />
@@ -153,11 +153,11 @@ export default function EmailLayout(
                     href={process.env.STOREFRONT_URL || 'http://localhost:8000'}
                     className="text-lg text-grayscale-500"
                   >
-                    {props.siteTitle || 'SofaSocietyCo.'}
+                    {props.siteTitle || 'Mi Tienda'}
                   </Link>
                   <Text className="text-xs m-0">
                     &copy; {new Date().getFullYear()},{' '}
-                    {props.companyName || 'Sofa Society'}
+                    {props.companyName || 'Mi Tienda'}
                   </Text>
                 </Column>
                 {props.footerLinks && props.footerLinks.length > 0 && (

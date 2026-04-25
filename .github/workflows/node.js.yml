@@ -39,4 +39,4 @@ jobs:
           DISALLOW_ROBOTS: true
           NEXT_PUBLIC_DEFAULT_REGION: us
           NEXT_PUBLIC_FEATURE_SEARCH_ENABLED: false
-          NEXT_PUBLIC_BASE_URL: https://fashion-starter.agilo.com
+          NEXT_PUBLIC_BASE_URL: ${{ secrets.NEXT_PUBLIC_BASE_URL }}

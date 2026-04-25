@@ -1,3 +1,6 @@
+// NOTA: Las imágenes de productos apuntan al CDN de Agilo
+// (assets.agilo.com). Solo afecta thumbnails, no la funcionalidad.
+// Al usar en producción, reemplazar con imágenes propias del cliente.
 import {
   createApiKeysWorkflow,
   createCollectionsWorkflow,
