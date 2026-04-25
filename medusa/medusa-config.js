@@ -5,7 +5,7 @@ loadEnv(process.env.NODE_ENV, process.cwd());
 module.exports = defineConfig({
   admin: {
     backendUrl:
-      process.env.BACKEND_URL ?? 'https://sofa-society-starter.medusajs.app',
+      process.env.BACKEND_URL ?? 'http://localhost:9000',
     storefrontUrl: process.env.STOREFRONT_URL,
   },
   projectConfig: {
@@ -73,20 +73,12 @@ module.exports = defineConfig({
               channels: ['email'],
               api_key: process.env.RESEND_API_KEY,
               from: process.env.RESEND_FROM,
-              siteTitle: 'SofaSocietyCo.',
-              companyName: 'Sofa Society',
+              siteTitle: 'Mi Tienda',
+              companyName: 'Mi Tienda',
               footerLinks: [
                 {
-                  url: 'https://agilo.com',
-                  label: 'Agilo',
-                },
-                {
-                  url: 'https://www.instagram.com/agiloltd/',
-                  label: 'Instagram',
-                },
-                {
-                  url: 'https://www.linkedin.com/company/agilo/',
-                  label: 'LinkedIn',
+                  url: 'https://tutienda.com',
+                  label: 'Mi Tienda',
                 },
               ],
             },
