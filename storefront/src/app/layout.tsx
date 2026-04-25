@@ -1,4 +1,5 @@
 import { getBaseURL } from "@lib/util/env"
+import { brand } from "@lib/brand"
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import { Metadata } from "next"
 import { Mona_Sans } from "next/font/google"
@@ -7,6 +8,16 @@ import "../styles/globals.css"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
+  title: {
+    default: brand.name,
+    template: `%s | ${brand.name}`,
+  },
+  description: brand.description,
+  openGraph: {
+    type: "website",
+    siteName: brand.name,
+    images: [brand.defaultOgImage],
+  },
 }
 
 const monaSans = Mona_Sans({

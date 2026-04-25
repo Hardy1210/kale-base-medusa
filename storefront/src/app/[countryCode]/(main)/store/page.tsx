@@ -1,11 +1,15 @@
 import { Metadata } from "next"
+import { brand } from "@lib/brand"
 
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import StoreTemplate from "@modules/store/templates"
 
 export const metadata: Metadata = {
-  title: "Store",
-  description: "Explore all of our products.",
+  title: brand.pages.store.title,
+  description: brand.pages.store.description,
+  alternates: {
+    canonical: `${brand.url}/fr/store`,
+  },
 }
 
 type Params = {

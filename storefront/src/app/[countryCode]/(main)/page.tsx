@@ -3,13 +3,16 @@ import { Layout, LayoutColumn } from "@/components/Layout"
 import { LocalizedLink } from "@/components/LocalizedLink"
 import { getProductTypesList } from "@lib/data/product-types"
 import { getRegion } from "@lib/data/regions"
+import { brand } from "@lib/brand"
 import { Metadata } from "next"
 import Image from "next/image"
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
-  description:
-    "A performant frontend ecommerce starter template with Next.js 14 and Medusa.",
+  title: brand.pages.home.title,
+  description: brand.pages.home.description,
+  alternates: {
+    canonical: `${brand.url}/fr`,
+  },
 }
 
 const ProductTypesSection: React.FC = async () => {

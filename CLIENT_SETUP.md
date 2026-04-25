@@ -2,7 +2,24 @@
 
 ## Checklist para un cliente nuevo
 
-### 1. Branding en el código
+### 1. SEO y marca — `storefront/src/lib/brand.ts`
+**Este es el primer archivo que debes editar.** Contiene todos los textos SEO del storefront:
+
+| Campo | Qué es |
+|---|---|
+| `name` | Nombre visible de la tienda (titles, footer, emails) |
+| `description` | Metadescription global (aparece en Google) |
+| `pages.home.title/description` | SEO de la home |
+| `pages.store.description` | SEO de la tienda |
+| `pages.about.title/description` | SEO del about |
+| `organization.*` | Completar cuando actives Organization JSON-LD (ver nota abajo) |
+
+> `brand.url` se lee automáticamente de `NEXT_PUBLIC_BASE_URL` — no editar en brand.ts.
+
+**og:image por defecto:** añadir la imagen en `storefront/public/images/og-default.jpg`.
+Sin este archivo, las páginas que no tienen imagen propia no tendrán preview en redes.
+
+### 2. Branding en el código
 Busca `Mi Tienda` en todo el proyecto y reemplaza por el nombre real del cliente:
 
 | Archivo | Qué cambiar |
@@ -14,21 +31,30 @@ Busca `Mi Tienda` en todo el proyecto y reemplaza por el nombre real del cliente
 | `storefront/src/app/.../auth/register/page.tsx` y `loading.tsx` | Texto de bienvenida en registro |
 | `medusa/medusa-config.js` → `siteTitle`, `companyName`, `footerLinks` | Nombre y links en emails transaccionales |
 
-### 2. Variables de entorno a personalizar
+### 3. Variables de entorno a personalizar
 | Variable | Archivo | Valor para el cliente |
 |---|---|---|
 | `RESEND_FROM` | `medusa/.env` | `"Nombre Tienda <noreply@dominio.com>"` |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | `storefront/.env.local` | URL real de Instagram |
-| `NEXT_PUBLIC_BASE_URL` | `storefront/.env.local` | URL del storefront en producción |
+| `NEXT_PUBLIC_BASE_URL` | `storefront/.env.local` | URL pública del storefront en producción |
 
-### 3. Imágenes del seed
+### 4. GitHub Actions — secretos CI/CD
+En el repositorio GitHub → Settings → Secrets, verificar que estos secretos están configurados:
+`BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `STRIPE_KEY`, `REVALIDATE_SECRET`, `NEXT_PUBLIC_BASE_URL`
+
+### 5. Bucket S3 en producción
+En `storefront/next.config.js` hay un `TODO` para agregar el dominio S3 del cliente.
+Descomentar y reemplazar con el hostname real del bucket.
+
+### 6. Imágenes del seed
 Las imágenes de demo del seed apuntan al CDN de Agilo (`assets.agilo.com`).
 Solo afectan thumbnails de productos de demo, no la funcionalidad.
 En producción, reemplazar con imágenes propias del cliente.
 
-### 4. Bucket S3 en producción
-En `storefront/next.config.js` hay un `TODO` para agregar el dominio S3 del cliente.
-Descomentar y reemplazar con el hostname real del bucket.
+### 7. Organization JSON-LD (opcional pero recomendado)
+Cuando el cliente tenga logo y URL definitiva, completar `brand.organization` en `brand.ts`
+y añadir el script JSON-LD en `storefront/src/app/layout.tsx` siguiendo el mismo patrón
+del JSON-LD de producto en `products/[handle]/page.tsx`.
 
 ---
 

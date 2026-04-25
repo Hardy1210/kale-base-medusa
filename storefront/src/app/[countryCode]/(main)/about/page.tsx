@@ -3,10 +3,14 @@ import Image from "next/image"
 import { StoreRegion } from "@medusajs/types"
 import { listRegions } from "@lib/data/regions"
 import { Layout, LayoutColumn } from "@/components/Layout"
+import { brand } from "@lib/brand"
 
 export const metadata: Metadata = {
-  title: "About",
-  description: "Learn more about Sofa Society",
+  title: brand.pages.about.title,
+  description: brand.pages.about.description,
+  alternates: {
+    canonical: `${brand.url}/fr/about`,
+  },
 }
 
 export async function generateStaticParams() {

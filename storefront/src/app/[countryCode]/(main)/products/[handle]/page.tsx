@@ -7,6 +7,7 @@ import {
   getProductByHandle,
   getProductFashionDataByHandle,
 } from "@lib/data/products"
+import { brand } from "@lib/brand"
 import ProductTemplate from "@modules/products/templates"
 
 type Props = {
@@ -68,12 +69,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${product.title} | Medusa Store`,
-    description: `${product.title}`,
+    title: product.title,
+    description: product.description ?? product.title,
     openGraph: {
-      title: `${product.title} | Medusa Store`,
-      description: `${product.title}`,
-      images: product.thumbnail ? [product.thumbnail] : [],
+      title: product.title,
+      description: product.description ?? product.title,
+      images: product.thumbnail ? [product.thumbnail] : [brand.defaultOgImage],
+    },
+    alternates: {
+      canonical: `${brand.url}/fr/products/${product.handle}`,
     },
   }
 }
@@ -95,12 +99,42 @@ export default async function ProductPage({ params }: Props) {
     notFound()
   }
 
+  const firstVariant = pricedProduct.variants?.[0]
+  const calculatedPrice = firstVariant?.calculated_price
+  const inStock = pricedProduct.variants?.some(
+    (v) => ((v as any).inventory_quantity ?? 0) > 0
+  )
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: pricedProduct.title,
+    description: pricedProduct.description ?? pricedProduct.title,
+    ...(pricedProduct.thumbnail && { image: pricedProduct.thumbnail }),
+    ...(calculatedPrice?.calculated_amount != null && {
+      offers: {
+        "@type": "Offer",
+        price: (calculatedPrice.calculated_amount / 100).toFixed(2),
+        priceCurrency: calculatedPrice.currency_code?.toUpperCase() ?? "EUR",
+        availability: inStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        url: `${brand.url}/fr/products/${pricedProduct.handle}`,
+      },
+    }),
+  }
+
   return (
-    <ProductTemplate
-      product={pricedProduct}
-      materials={fashionData.materials}
-      region={region}
-      countryCode={countryCode}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ProductTemplate
+        product={pricedProduct}
+        materials={fashionData.materials}
+        region={region}
+        countryCode={countryCode}
+      />
+    </>
   )
 }

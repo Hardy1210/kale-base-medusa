@@ -10,6 +10,7 @@ import { StoreCollection, StoreRegion } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { collectionMetadataCustomFieldsSchema } from "@lib/util/collections"
+import { brand } from "@lib/brand"
 
 type Props = {
   params: Promise<{ handle: string; countryCode: string }>
@@ -69,15 +70,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     collection.metadata ?? {}
   )
 
-  const metadata = {
-    title: `${collection.title} | Medusa Store`,
-    description:
-      collectionDetails.success && collectionDetails.data.description
-        ? collectionDetails.data.description
-        : `${collection.title} collection`,
-  } as Metadata
+  const description =
+    collectionDetails.success && collectionDetails.data.description
+      ? collectionDetails.data.description
+      : `${collection.title} collection`
 
-  return metadata
+  return {
+    title: collection.title,
+    description,
+    openGraph: {
+      title: collection.title,
+      description,
+      images: [brand.defaultOgImage],
+    },
+    alternates: {
+      canonical: `${brand.url}/fr/collections/${handle}`,
+    },
+  } as Metadata
 }
 
 export default async function CollectionPage({ params, searchParams }: Props) {
