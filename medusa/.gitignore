@@ -26,3 +26,6 @@ build
 
 .medusa
 /static
+
+# Override local de puertos (conflicto con proyecto lexio) — no versionar
+docker-compose.override.yml

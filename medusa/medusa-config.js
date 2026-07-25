@@ -67,12 +67,23 @@ module.exports = defineConfig({
       options: {
         providers: [
           {
+            // Canal "feed": notificaciones dentro del admin (export/import de
+            // productos, etc.). Sin este proveedor, esas acciones fallan.
+            resolve: '@medusajs/medusa/notification-local',
+            id: 'local',
+            options: {
+              channels: ['feed'],
+            },
+          },
+          {
             resolve: './src/modules/resend',
             id: 'resend',
             options: {
               channels: ['email'],
               api_key: process.env.RESEND_API_KEY,
               from: process.env.RESEND_FROM,
+              // Reply-To: las respuestas de los clientes van a contact@ (via .env)
+              replyTo: process.env.EMAIL_REPLY_TO,
               siteTitle: 'Mi Tienda',
               companyName: 'Mi Tienda',
               footerLinks: [
@@ -83,6 +94,29 @@ module.exports = defineConfig({
               ],
             },
           },
+          // ───────────────────────────────────────────────────────────────
+          // Brevo — INACTIVO. Para migrar de Resend a Brevo en el canal
+          // "email": comenta el proveedor 'resend' de arriba, descomenta este
+          // bloque y define BREVO_API_KEY + BREVO_FROM en el .env. Las
+          // plantillas y los subscribers NO cambian (misma fuente de verdad).
+          // {
+          //   resolve: './src/modules/brevo',
+          //   id: 'brevo',
+          //   options: {
+          //     channels: ['email'],
+          //     api_key: process.env.BREVO_API_KEY,
+          //     from: process.env.BREVO_FROM,
+          //     replyTo: process.env.EMAIL_REPLY_TO,
+          //     siteTitle: 'Mi Tienda',
+          //     companyName: 'Mi Tienda',
+          //     footerLinks: [
+          //       {
+          //         url: 'https://tutienda.com',
+          //         label: 'Mi Tienda',
+          //       },
+          //     ],
+          //   },
+          // },
         ],
       },
     },

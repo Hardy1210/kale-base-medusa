@@ -66,10 +66,13 @@ del JSON-LD de producto en `products/[handle]/page.tsx`.
 |---|---|
 | `STRIPE_API_KEY` | Clave secreta de Stripe (empieza con `sk_live_...`) |
 | `STRIPE_WEBHOOK_SECRET` | Secret del webhook de Stripe |
-| `RESEND_API_KEY` | Clave de API de Resend para emails transaccionales |
+| `RESEND_API_KEY` | Clave de API de Resend para emails transaccionales (proveedor activo por defecto) |
 | `RESEND_FROM` | Dirección de envío, ej: `Tu Tienda <noreply@tutienda.com>` |
+| `EMAIL_REPLY_TO` | Dirección a la que responden los clientes, ej: `contact@tutienda.com`. Vacío = sin reply-to. Ver sección _Proveedor de email_ |
 | `JWT_SECRET` | Secret para firmar tokens JWT |
 | `COOKIE_SECRET` | Secret para firmar cookies de sesión |
+
+> **Alternativa Brevo:** si en vez de Resend usas Brevo, configura `BREVO_API_KEY` y `BREVO_FROM` en lugar de las de Resend, y actívalo en `medusa-config.js` (ver sección _Proveedor de email_).
 
 ### Storefront (`storefront/.env.local`)
 
@@ -92,6 +95,48 @@ openssl rand -hex 32
 ```
 
 Nunca uses `supersecret` ni valores por defecto en producción.
+
+---
+
+## Proveedor de email (Resend / Brevo)
+
+Los emails transaccionales usan un **proveedor de notificaciones** intercambiable
+(canal `email` en `medusa-config.js`). Las **plantillas** (`src/modules/resend/emails/`)
+son React Email y **no dependen del proveedor**: cambiar de Resend a Brevo no altera
+ninguna plantilla ni ningún subscriber.
+
+### Emails que se envían actualmente
+
+| Email | Evento | Destinatario |
+|---|---|---|
+| Confirmación de compra | `order.placed` | comprador (registrado o invitado) |
+| Pedido en camino | `order.fulfillment_created` | comprador — se dispara al marcar el pedido como preparado/enviado en el admin |
+| Bienvenida | `customer.welcome` | cliente registrado |
+| Reset de contraseña | `auth.password_reset` | cliente |
+
+> No hay email de aviso al comerciante ni de reembolso: el comerciante se entera de
+> las ventas por el admin (y por los emails de pago de Stripe), y gestiona reembolsos
+> desde el admin de Medusa.
+
+### Reply-To (`contact@`)
+
+Define `EMAIL_REPLY_TO=contact@dominio-cliente.com` en `medusa/.env`. Es un **buzón del
+dominio del cliente** (su hosting de correo, no Brevo/Resend) al que llegan las respuestas.
+Vacío = los emails salen sin reply-to. No requiere formulario de contacto: basta publicar
+esa dirección en el footer / mentions légales.
+
+### Activar Brevo en vez de Resend
+
+El módulo `src/modules/brevo` ya está montado pero **inactivo** (Resend es el proveedor
+activo). Para migrar:
+
+1. En `medusa/.env`: define `BREVO_API_KEY` y `BREVO_FROM`.
+2. En `medusa/medusa-config.js`, dentro del módulo `notification`: **comenta** el proveedor
+   `resend` y **descomenta** el bloque `brevo` (ya está escrito con instrucciones).
+3. Verifica el dominio del remitente en Brevo (SPF/DKIM/DMARC) y reinicia el backend.
+
+Las campañas de marketing (newsletters) las gestiona el cliente directamente desde la
+consola de Brevo; eso es independiente de este código.
 
 ---
 

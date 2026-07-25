@@ -107,9 +107,29 @@ storefront/src/
 **Data Fetching:** Tanstack Query v5 with Medusa JS SDK. Cache revalidation uses `REVALIDATE_SECRET`.
 
 ### Infrastructure (Docker)
-- **PostgreSQL 16** — port 5433 (non-standard to avoid conflicts)
-- **Redis 7** — port 6379
-- **MinIO** — S3-compatible storage, API on 9000, Console on 9001
+Start from `medusa/` with `docker compose up -d` (run it **inside** `medusa/`, no `-f`, so Compose auto-loads any local `docker-compose.override.yml`).
+
+Default host ports:
+- **PostgreSQL 16** — host port 5433 → 5432 (non-standard to avoid conflicts)
+- **Redis 7** — host port 6379 → 6379
+- **MinIO** — S3-compatible storage, API on host 9090 → 9000, Console on host 9001
+
+**Local port conflicts:** if another project on the same machine already binds 6379 (Redis) or 9000–9001 (MinIO), the container fails with `port is already allocated`. Don't stop the other project and don't change the committed `docker-compose.yml` — instead create a git-ignored `medusa/docker-compose.override.yml` that remaps only the host ports, then update the affected value in `medusa/.env` (e.g. `REDIS_URL`). Use the `!override` YAML tag on the `ports:` list so Compose replaces the base mapping instead of concatenating it:
+
+```yaml
+services:
+  redis:
+    ports: !override
+      - "6380:6379"      # then set REDIS_URL=redis://localhost:6380 in .env
+  minio:
+    ports: !override
+      - "9090:9000"
+      - "9091:9001"      # host console remapped; S3 API stays on 9090
+```
+
+This override is machine-local only — it never ships to clients or production (prod uses Coolify-managed Postgres/Redis, not this compose).
+
+The Medusa dev server itself defaults to host port **9000** (`yarn dev` serves both the store API and the admin at `/app`). If 9000 is taken by another local project, set `PORT` in `medusa/.env` (e.g. `PORT=9002`), point `BACKEND_URL` at it, and match `NEXT_PUBLIC_MEDUSA_BACKEND_URL` in `storefront/.env.local`. Both `.env` files are git-ignored, so this stays local.
 
 ## Medusa Config Highlights (`medusa/medusa-config.js`)
 - **Payment:** Stripe

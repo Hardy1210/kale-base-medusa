@@ -16,6 +16,7 @@ export default class ResendNotificationProviderService extends AbstractNotificat
   public static identifier = 'resend';
   private resendClient: Resend;
   private from: string;
+  private replyTo?: string;
   private layoutOptions?: EmailLayoutProps;
   private logger: Logger;
 
@@ -60,6 +61,14 @@ export default class ResendNotificationProviderService extends AbstractNotificat
       }
     }
 
+    if (
+      'replyTo' in options &&
+      typeof options.replyTo === 'string' &&
+      options.replyTo
+    ) {
+      this.replyTo = options.replyTo;
+    }
+
     this.resendClient = new Resend(options.api_key);
     this.from = options.from;
     this.logger = logger;
@@ -90,6 +99,7 @@ export default class ResendNotificationProviderService extends AbstractNotificat
     const { data, error } = await this.resendClient.emails.send({
       from: this.from,
       to: [notification.to],
+      ...(this.replyTo ? { replyTo: this.replyTo } : {}),
       subject,
       react: <Template {...this.layoutOptions} {...notification.data} />,
     });
