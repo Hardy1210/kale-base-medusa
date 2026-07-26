@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **📍 Estado del proyecto → ver [`ROADMAP_PRODUCCION.md`](./ROADMAP_PRODUCCION.md)** para las fases pendientes hacia producción (personalización del cliente, Dockerfiles, deploy en Hetzner/Coolify). Leer al abrir el proyecto.
+
 ## Overview
 
 This is a **Medusa 2 e-commerce monorepo** with two independent packages:
