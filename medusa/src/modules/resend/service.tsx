@@ -7,6 +7,7 @@ import {
 import { Resend } from 'resend';
 import emails, { subjects } from './emails';
 import type { EmailLayoutProps } from './emails/components/EmailLayout';
+import { captureException } from '../../lib/sentry';
 
 type InjectedDependencies = {
   logger: Logger;
@@ -82,11 +83,14 @@ export default class ResendNotificationProviderService extends AbstractNotificat
     const subject = subjects[notification.template] || '';
 
     if (!Template) {
-      this.logger.error(
-        `Couldn't find an email template for ${
-          notification.template
-        }. The valid options are ${Object.keys(emails).join(', ')}`,
-      );
+      const message = `Couldn't find an email template for ${
+        notification.template
+      }. The valid options are ${Object.keys(emails).join(', ')}`;
+      this.logger.error(message);
+      captureException(new Error(message), {
+        template: notification.template,
+        to: notification.to,
+      });
       return {};
     }
 
@@ -96,16 +100,40 @@ export default class ResendNotificationProviderService extends AbstractNotificat
       );
     }
 
-    const { data, error } = await this.resendClient.emails.send({
-      from: this.from,
-      to: [notification.to],
-      ...(this.replyTo ? { replyTo: this.replyTo } : {}),
-      subject,
-      react: <Template {...this.layoutOptions} {...notification.data} />,
-    });
+    let data: Awaited<
+      ReturnType<typeof this.resendClient.emails.send>
+    >['data'];
+    let error: Awaited<
+      ReturnType<typeof this.resendClient.emails.send>
+    >['error'];
+
+    try {
+      ({ data, error } = await this.resendClient.emails.send({
+        from: this.from,
+        to: [notification.to],
+        ...(this.replyTo ? { replyTo: this.replyTo } : {}),
+        subject,
+        react: <Template {...this.layoutOptions} {...notification.data} />,
+      }));
+    } catch (e) {
+      // Fallo de red o del SDK. Se relanza para no cambiar el comportamiento
+      // actual; el capture solo añade la visibilidad que faltaba.
+      captureException(e, {
+        template: notification.template,
+        to: notification.to,
+      });
+      throw e;
+    }
 
     if (error) {
+      // Este error se traga a propósito para que el pedido no falle por un
+      // email. Sin este capture el cliente se quedaría sin confirmación y
+      // nadie se enteraría: Sentry solo ve las excepciones NO capturadas.
       this.logger.error(`Failed to send email`, error);
+      captureException(error, {
+        template: notification.template,
+        to: notification.to,
+      });
       return {};
     }
 
