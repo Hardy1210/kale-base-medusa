@@ -237,9 +237,16 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
       más rápidos.
       ⚠️ Esto **no afecta a las fotos de producto** — viven en R2 y nunca entran en la
       imagen Docker. "Imagen" aquí es el paquete de la app, no un JPG.
-- [ ] **`storefront/Dockerfile`: multi-stage que aproveche standalone**
-      (el de `PRODUCTION_DEPLOY.md` §1 copia `node_modules` entero — hay que rehacerlo)
-- [ ] **`medusa/Dockerfile`** (contenido listo en `PRODUCTION_DEPLOY.md` §1, sirve tal cual)
+- [x] ~~**`storefront/Dockerfile` y `medusa/Dockerfile`**~~ ✅ **HECHOS en el starter**,
+      con sus `.dockerignore`. Node 22 (la rama 20 dejó de tener soporte en abril de
+      2026) sobre Debian slim, no Alpine: `sharp` —que redimensiona las fotos de
+      producto— da problemas de binarios con musl.
+      El storefront usa `output: "standalone"`, así que la imagen lleva solo las
+      dependencias rastreadas y no los `node_modules` enteros. El backend fija
+      `NODE_ENV=production` en la propia imagen, de modo que el guard de secretos queda
+      activo aunque se olvide la variable en Coolify.
+      ⚠️ **Las `NEXT_PUBLIC_*` hay que marcarlas como Build Args en Coolify**: se
+      incrustan al compilar, no al arrancar.
 - [x] ~~**`medusa-config.js`: registrar los módulos de Redis**~~ ✅ **HECHO en el starter.**
       Registrados `cache-redis`, `event-bus-redis` y `workflow-engine-redis`.
       **Es fiabilidad, no rendimiento**: antes el bus de eventos vivía en memoria, así que

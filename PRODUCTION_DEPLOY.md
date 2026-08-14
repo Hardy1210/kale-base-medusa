@@ -16,54 +16,29 @@ servidor y la compilación pide ~3 GB extra. Justificación completa y alternati
 
 ## 1. Preparación del código
 
-- [ ] Crear `medusa/Dockerfile`:
+✅ **`medusa/Dockerfile` y `storefront/Dockerfile` ya existen en el repo base**, junto a
+sus `.dockerignore`. Son idénticos para todos los clientes: no hay que tocarlos ni
+copiarlos de aquí. Ambos usan Node 22 sobre Debian slim, compilan en una etapa aparte y
+arrancan como usuario sin privilegios.
 
-```dockerfile
-FROM node:20-alpine
-WORKDIR /app
-COPY package.json yarn.lock .yarnrc.yml ./
-RUN corepack enable && yarn install --frozen-lockfile
-COPY . .
-RUN yarn build
-EXPOSE 9000
-CMD ["yarn", "start"]
-```
+Dos cosas que conviene saber antes de configurar Coolify:
 
-- [ ] Crear `storefront/Dockerfile`
-  *(los `NEXT_PUBLIC_*` deben pasarse como build args — Coolify los inyecta automáticamente):*
+- **El storefront usa la salida `standalone` de Next** (`output: "standalone"` en
+  `next.config.js`). La imagen final lleva solo las dependencias que el build rastrea
+  como necesarias, no los `node_modules` enteros.
+- **El backend fija `NODE_ENV=production` en la propia imagen.** Aun así, defínela
+  también en Coolify: de ella depende que `medusa-config.js` rechace arrancar con
+  secretos de firma débiles, y conviene que sea explícita.
 
-```dockerfile
-FROM node:20-alpine AS builder
-WORKDIR /app
+- [ ] **En Coolify, marcar todas las `NEXT_PUBLIC_*` como Build Args** del storefront,
+  además de como variables de entorno. Se incrustan en el JavaScript que descarga el
+  navegador, así que tienen que existir **al compilar**: si solo se pasan en runtime, la
+  tienda queda apuntando a `undefined`. La lista completa está en los `ARG` del
+  `storefront/Dockerfile`.
 
-ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL
-ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_BASE_URL
-ARG NEXT_PUBLIC_DEFAULT_REGION
-ARG NEXT_PUBLIC_STRIPE_KEY
-ARG REVALIDATE_SECRET
-
-ENV NEXT_PUBLIC_MEDUSA_BACKEND_URL=$NEXT_PUBLIC_MEDUSA_BACKEND_URL
-ENV NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-ENV NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL
-ENV NEXT_PUBLIC_DEFAULT_REGION=$NEXT_PUBLIC_DEFAULT_REGION
-ENV NEXT_PUBLIC_STRIPE_KEY=$NEXT_PUBLIC_STRIPE_KEY
-ENV REVALIDATE_SECRET=$REVALIDATE_SECRET
-
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
-COPY . .
-RUN yarn build
-
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-EXPOSE 8000
-CMD ["yarn", "start", "-p", "8000"]
-```
+- [ ] **Desplegar el backend antes que el storefront.** El build del storefront
+  prerenderiza las fichas de producto llamando a la API: si Medusa todavía no responde,
+  compila igual pero esas páginas pierden el prerenderizado.
 
 - [ ] En `storefront/next.config.js`, añadir el dominio R2 en `remotePatterns`:
 

@@ -1,0 +1,36 @@
+# Todo lo que no debe entrar en el contexto de build.
+# Sin esto, Docker envía cientos de MB al daemon en cada despliegue y, peor,
+# unos node_modules construidos en Windows acabarían dentro de una imagen Linux.
+
+node_modules
+.medusa
+dist
+build
+.cache
+
+# Secretos. Nunca deben quedar horneados en una capa de la imagen: las
+# variables las inyecta Coolify en tiempo de ejecución.
+.env
+.env.*
+!.env.template
+
+.git
+.gitignore
+.github
+
+# Solo se usan en local
+docker-compose.yml
+docker-compose.override.yml
+uploads
+static
+
+# Tests y herramientas de desarrollo
+integration-tests
+jest.config.js
+coverage
+
+.vscode
+.idea
+.DS_Store
+yarn-error.log
+*.md

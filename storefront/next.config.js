@@ -6,6 +6,11 @@ checkEnvVariables()
  * @type {import('next').NextConfig}
  */
 const nextConfig = {
+  // Genera en .next/standalone un servidor con solo las dependencias que el
+  // código usa de verdad. Es lo que permite que la imagen Docker no arrastre
+  // los node_modules enteros (cientos de MB de los que en producción no se
+  // ejecuta casi ninguno). No afecta a `yarn dev` ni a `yarn start` en local.
+  output: "standalone",
   reactStrictMode: true,
   experimental: {
     staticGenerationRetryCount: 3,
