@@ -1,7 +1,8 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
+import { withErrorReporting } from '../lib/subscriber-error-reporting';
 
-export default async function sendOrderConfirmationHandler({
+async function sendOrderConfirmationHandler({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
@@ -70,6 +71,8 @@ export default async function sendOrderConfirmationHandler({
     data: { order, customer },
   });
 }
+
+export default withErrorReporting(sendOrderConfirmationHandler);
 
 export const config: SubscriberConfig = {
   event: 'order.placed',

@@ -1,5 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
+import { withErrorReporting } from '../lib/subscriber-error-reporting';
 
 /**
  * Envía el email "tu pedido va en camino" cuando el comerciante crea el
@@ -7,7 +8,7 @@ import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
  * Usa la plantilla `order-update` (ya existente). Aplica tanto a clientes
  * registrados como a invitados, porque se envía a `order.email`.
  */
-export default async function sendOrderShippedHandler({
+async function sendOrderShippedHandler({
   event: { data },
   container,
 }: SubscriberArgs<{ order_id: string; no_notification?: boolean }>) {
@@ -45,6 +46,8 @@ export default async function sendOrderShippedHandler({
     data: { order, customer },
   });
 }
+
+export default withErrorReporting(sendOrderShippedHandler);
 
 export const config: SubscriberConfig = {
   event: 'order.fulfillment_created',

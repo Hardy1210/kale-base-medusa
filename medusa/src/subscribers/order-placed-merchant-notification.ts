@@ -1,5 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
+import { withErrorReporting } from '../lib/subscriber-error-reporting';
 
 /**
  * Avisa al comerciante de que ha entrado un pedido nuevo.
@@ -12,7 +13,7 @@ import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
  * subscriber no hace nada más que avisar en el log, para no romper los
  * entornos donde no esté configurada.
  */
-export default async function sendOrderPlacedMerchantNotification({
+async function sendOrderPlacedMerchantNotification({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
@@ -60,6 +61,8 @@ export default async function sendOrderPlacedMerchantNotification({
     data: { order },
   });
 }
+
+export default withErrorReporting(sendOrderPlacedMerchantNotification);
 
 export const config: SubscriberConfig = {
   event: 'order.placed',

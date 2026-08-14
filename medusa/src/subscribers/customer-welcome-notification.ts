@@ -1,8 +1,9 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
 import type { CustomerDTO } from '@medusajs/framework/types';
+import { withErrorReporting } from '../lib/subscriber-error-reporting';
 
-export default async function sendCustomerWelcomeNotification({
+async function sendCustomerWelcomeNotification({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
@@ -31,6 +32,8 @@ export default async function sendCustomerWelcomeNotification({
     data: { customer },
   });
 }
+
+export default withErrorReporting(sendCustomerWelcomeNotification);
 
 export const config: SubscriberConfig = {
   event: 'customer.welcome',

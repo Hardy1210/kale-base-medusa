@@ -1,6 +1,7 @@
 import type { SubscriberArgs, SubscriberConfig } from '@medusajs/medusa';
 import { ContainerRegistrationKeys, Modules } from '@medusajs/framework/utils';
 import type { OrderDTO } from '@medusajs/framework/types';
+import { withErrorReporting } from '../lib/subscriber-error-reporting';
 
 /**
  * Deja constancia del pedido nuevo en la campanita del admin (canal `feed`).
@@ -17,7 +18,7 @@ import type { OrderDTO } from '@medusajs/framework/types';
  * Formato (`to: ''`, `template: 'admin-ui'`, `data.title` obligatorio) copiado
  * de los workflows de core-flows, que es lo que el admin sabe pintar.
  */
-export default async function sendOrderPlacedFeedNotification({
+async function sendOrderPlacedFeedNotification({
   event: { data },
   container,
 }: SubscriberArgs<{ id: string }>) {
@@ -62,6 +63,8 @@ export default async function sendOrderPlacedFeedNotification({
     },
   });
 }
+
+export default withErrorReporting(sendOrderPlacedFeedNotification);
 
 export const config: SubscriberConfig = {
   event: 'order.placed',

@@ -1,8 +1,9 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/medusa";
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils";
 import type { CustomerDTO } from "@medusajs/framework/types";
+import { withErrorReporting } from "../lib/subscriber-error-reporting";
 
-export default async function sendPasswordResetNotification({
+async function sendPasswordResetNotification({
   event: { data },
   container,
 }: SubscriberArgs<{ entity_id: string; token: string; actor_type: string }>) {
@@ -33,6 +34,8 @@ export default async function sendPasswordResetNotification({
     data: { customer, token: data.token },
   });
 }
+
+export default withErrorReporting(sendPasswordResetNotification);
 
 export const config: SubscriberConfig = {
   event: "auth.password_reset",
