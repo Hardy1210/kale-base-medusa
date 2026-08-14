@@ -1,6 +1,5 @@
 import { Metadata } from "next"
-import { StoreRegion } from "@medusajs/types"
-import { listRegions } from "@lib/data/regions"
+import { listCountryCodes } from "@lib/data/regions"
 import { Layout, LayoutColumn } from "@/components/Layout"
 
 export const metadata: Metadata = {
@@ -8,24 +7,9 @@ export const metadata: Metadata = {
   description: "Learn how we protect your privacy",
 }
 export async function generateStaticParams() {
-  const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions.flatMap((r) =>
-      r.countries
-        ? r.countries
-            .map((c) => c.iso_2)
-            .filter(
-              (value): value is string =>
-                typeof value === "string" && Boolean(value)
-            )
-        : []
-    )
-  )
+  const countryCodes = await listCountryCodes()
 
-  const staticParams = countryCodes.map((countryCode) => ({
-    countryCode,
-  }))
-
-  return staticParams
+  return countryCodes.map((countryCode) => ({ countryCode }))
 }
 
 export default function PrivacyPolicyPage() {

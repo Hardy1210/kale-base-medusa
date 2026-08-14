@@ -24,6 +24,39 @@ export const retrieveRegion = async function (id: string) {
     .catch(medusaError)
 }
 
+/**
+ * Códigos de país de todas las regiones, para los `generateStaticParams`.
+ *
+ * Devuelve `[]` si el backend no responde, en lugar de propagar el error.
+ * `generateStaticParams` se ejecuta AL COMPILAR, así que una excepción ahí
+ * aborta el build entero del storefront: un despliegue lanzado mientras Medusa
+ * reinicia se caía sin más. Con la lista vacía, Next sirve esas páginas bajo
+ * demanda — se degrada, no se rompe.
+ *
+ * Es el mismo criterio que ya seguía la ficha de producto, la única página que
+ * capturaba el fallo. Además evita repetir el mismo bloque en las seis páginas
+ * que lo tenían copiado.
+ */
+export const listCountryCodes = async function (): Promise<string[]> {
+  try {
+    const regions = await listRegions()
+
+    return (regions ?? []).flatMap(
+      (region) =>
+        region.countries
+          ?.map((country) => country.iso_2)
+          .filter((iso): iso is string => Boolean(iso)) ?? []
+    )
+  } catch (error) {
+    console.error(
+      `No se pudieron leer las regiones para las rutas estáticas: ${
+        error instanceof Error ? error.message : "error desconocido"
+      }. Esas páginas se renderizarán bajo demanda.`
+    )
+    return []
+  }
+}
+
 const regionMap = new Map<string, HttpTypes.StoreRegion>()
 
 export const getRegion = async function (countryCode: string) {

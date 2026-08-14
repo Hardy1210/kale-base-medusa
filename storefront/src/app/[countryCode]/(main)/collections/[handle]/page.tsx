@@ -5,8 +5,8 @@ import {
   getCollectionByHandle,
   getCollectionsList,
 } from "@lib/data/collections"
-import { listRegions } from "@lib/data/regions"
-import { StoreCollection, StoreRegion } from "@medusajs/types"
+import { listCountryCodes } from "@lib/data/regions"
+import { StoreCollection } from "@medusajs/types"
 import CollectionTemplate from "@modules/collections/templates"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { collectionMetadataCustomFieldsSchema } from "@lib/util/collections"
@@ -23,34 +23,35 @@ type Props = {
 }
 
 export async function generateStaticParams() {
-  const { collections } = await getCollectionsList()
+  try {
+    const { collections } = await getCollectionsList()
 
-  if (!collections) {
-    return []
-  }
+    if (!collections) {
+      return []
+    }
 
-  const countryCodes = await listRegions().then(
-    (regions: StoreRegion[]) =>
-      regions
-        ?.map((r) => r.countries?.map((c) => c.iso_2))
-        .flat()
-        .filter(Boolean) as string[]
-  )
+    const countryCodes = await listCountryCodes()
 
-  const collectionHandles = collections.map(
-    (collection: StoreCollection) => collection.handle
-  )
+    const collectionHandles = collections.map(
+      (collection: StoreCollection) => collection.handle
+    )
 
-  const staticParams = countryCodes
-    ?.map((countryCode: string) =>
+    return countryCodes.flatMap((countryCode) =>
       collectionHandles.map((handle: string | undefined) => ({
         countryCode,
         handle,
       }))
     )
-    .flat()
-
-  return staticParams
+  } catch (error) {
+    // Se ejecuta al compilar: sin este catch, un backend que no responde
+    // tumba el build entero en vez de dejar estas páginas bajo demanda.
+    console.error(
+      `No se pudieron generar las rutas de colección: ${
+        error instanceof Error ? error.message : "error desconocido"
+      }.`
+    )
+    return []
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
