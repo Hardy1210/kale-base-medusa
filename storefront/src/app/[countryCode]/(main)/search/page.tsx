@@ -21,9 +21,9 @@ export default async function SearchPage({ params, searchParams }: Props) {
   const { query, page } = await searchParams
 
   const pageNumber = page ? parseInt(page, 10) : 1
-  const limit = 12
-  const offset = (pageNumber - 1) * limit
 
+  // Se piden 100 resultados de una vez y la paginación se hace más abajo sobre
+  // ellos, así que aquí no se calcula ningún desplazamiento.
   const { products } = await searchProducts({
     q: query || "",
     countryCode,

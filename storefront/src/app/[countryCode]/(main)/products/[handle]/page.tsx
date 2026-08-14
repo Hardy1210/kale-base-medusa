@@ -102,7 +102,10 @@ export default async function ProductPage({ params }: Props) {
   const firstVariant = pricedProduct.variants?.[0]
   const calculatedPrice = firstVariant?.calculated_price
   const inStock = pricedProduct.variants?.some(
-    (v) => ((v as any).inventory_quantity ?? 0) > 0
+    // `inventory_quantity` llega en la respuesta pero no está en el tipo del
+    // SDK. Se acota al campo concreto en vez de usar `any`, que apagaba el
+    // chequeo de tipos de toda la variante.
+    (v) => ((v as { inventory_quantity?: number }).inventory_quantity ?? 0) > 0
   )
   const jsonLd = {
     "@context": "https://schema.org",
