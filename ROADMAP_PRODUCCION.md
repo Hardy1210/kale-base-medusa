@@ -522,6 +522,54 @@ operar el admin sin ayuda.
 
 ---
 
+## Historial de fallos y cómo revertirlos
+
+Registro de los fallos que ha provocado el propio starter, con el commit que los
+introdujo y el que los arregló. Sirve para dos cosas: saber **exactamente** qué revertir
+si algo sale mal en producción, y no perder tiempo sospechando del sitio equivocado.
+
+### 14 ago 2026 — verificación en runtime de los cambios de monitoreo y despliegue
+
+Los tres fallos tienen algo en común: **ninguno se veía compilando.** Los tres pasaban
+`medusa build`, `tsc` y `yarn lint` sin una sola queja. Solo aparecieron al **ejecutar**
+el servidor y al **levantar los contenedores**. Es el argumento para no dar por buena una
+fase solo porque el build pase.
+
+| # | Síntoma | Lo introdujo | Lo arregló |
+|---|---|---|---|
+| 1 | El backend no arranca: `Subscriber with id ... already exists` | `0786d2d` | `9399f7e` |
+| 2 | El contenedor del backend no arranca; corepack intenta descargar yarn | `6388311` | `c57ddf3` |
+| 3 | El build del storefront muere si el backend no responde | *(preexistente)* | `346790b` |
+
+**1. Colisión de ids de subscriber.** Al envolver los seis subscribers con
+`withErrorReporting`, todos pasaron a exportar la función interna del wrapper, con el
+mismo nombre. Medusa deriva el id del subscriber de ese nombre. Se arregla conservando el
+nombre del handler original.
+Revertir todo el bloque de monitoreo del backend: `git revert 9399f7e 0786d2d`
+
+**2. `yarn start` dentro del contenedor.** Corepack intentaba descargarse yarn 4.7.0 en
+cada arranque —la tienda habría necesitado internet para encenderse— y además daba un
+falso *"the project doesn't seem to have been installed"*. Se arregla llamando al binario
+que ya viene en la imagen.
+Revertir los Dockerfiles: `git revert c57ddf3 6388311`
+
+**3. `generateStaticParams` sin `try/catch`.** Seis páginas llamaban al backend al
+compilar sin capturar el error. **Esto venía del starter original**, no de los cambios de
+esta sesión; nunca se había visto porque hasta ahora nadie había construido el storefront
+en un contenedor aislado. Sigue sin cubrir `/_not-found`, que renderiza `Header` y
+`Footer` y por tanto **necesita el backend vivo al compilar**: de ahí que el orden
+backend → storefront de la Fase 5 sea obligatorio, no una recomendación.
+
+**Lo que NO causó ningún fallo**, para no volver a sospechar de ello:
+
+- El commit de seguridad `c117ed5` (secretos de firma + rutas de Stripe). El backend
+  arranca y responde con él aplicado, en dev y en contenedor.
+- **Ningún `.env` ni `.env.local` se ha movido ni tocado nunca.** Están en `.gitignore` y
+  no aparecen en ningún commit — compruébalo con `git log --all -- medusa/.env`. Lo único
+  que cambió fue `.env.template`, que es documentación y no lo lee ningún código.
+
+---
+
 ## ¿Qué es un Dockerfile? (obligatorio para este stack)
 
 Es la "receta" que empaqueta la app (código + Node + dependencias) en un contenedor que
