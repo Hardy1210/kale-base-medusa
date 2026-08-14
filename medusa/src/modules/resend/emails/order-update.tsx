@@ -17,6 +17,8 @@ export default function OrderUpdateEmail({
   order,
   ...emailLayoutProps
 }: Props & EmailLayoutProps) {
+  const storeName = emailLayoutProps.siteTitle || 'Mi Tienda';
+
   return (
     <EmailLayout {...emailLayoutProps}>
       <Heading className="text-2xl mt-0 mb-10 font-medium">
@@ -38,8 +40,7 @@ export default function OrderUpdateEmail({
         Order details
       </Button>
       <Text className="text-md m-0">
-        Thank you for choosing Sofa Society. We&apos;re excited for your new
-        sofa to find its home with you!
+        Thank you for choosing {storeName}. We hope you enjoy your order!
       </Text>
     </EmailLayout>
   );

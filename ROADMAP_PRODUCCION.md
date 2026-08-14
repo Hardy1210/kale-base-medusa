@@ -4,8 +4,11 @@ Ruta de construcción para llevar este starter a producción **para un cliente n
 Detalle de cada punto en [`CLIENT_SETUP.md`](./CLIENT_SETUP.md) (personalización) y
 [`PRODUCTION_DEPLOY.md`](./PRODUCTION_DEPLOY.md) (deploy).
 
-**Stack de destino:** Hetzner (VPS) + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
+**Stack de destino:** VPS europeo + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
 + Stripe + Resend + Sentry.
+
+**Un VPS dedicado por cliente.** La app se compila en GitHub Actions, no en el servidor
+→ ver [Fase 4](#fase-4--código-listo-para-desplegar) y [Fase 5](#fase-5--infraestructura-un-vps-por-cliente).
 
 ---
 
@@ -89,9 +92,11 @@ Sin esto no se toca ni una línea.
 
 **Objetivo:** que la tienda sea del cliente, no del starter.
 
-- [ ] `storefront/src/lib/brand.ts` — nombre, descripción, SEO de home/store/about
-- [ ] Reemplazar `"Mi Tienda"`: `Header.tsx`, `Footer.tsx`, checkout `layout.tsx`,
-      páginas de `auth`, y `medusa-config.js` (`siteTitle`, `companyName`, `footerLinks`)
+- [ ] `storefront/src/lib/brand.ts` — nombre, descripción, SEO de home/store/about.
+      **Cubre todo el storefront**: header, footer, checkout, titles y sitemap
+- [ ] `medusa/.env` → **`STORE_NAME`** — cubre **todos los emails** (asuntos, cuerpo,
+      cabecera y pie). Estos dos sitios son los únicos: no hay ni un nombre escrito a
+      mano en componentes ni en plantillas
 - [ ] `storefront/public/images/og-default.jpg` (preview en redes)
 - [ ] Variables: `NEXT_PUBLIC_INSTAGRAM_URL`, `NEXT_PUBLIC_BASE_URL`
 - [ ] **Regiones**: dejar solo las decididas en la Fase 1 (admin → Settings → Regions)
@@ -127,9 +132,10 @@ Más una notificación en la **campanita del admin** por cada pedido (sin config
 El comprador recibe **un solo email** por su compra: la confirmación de Medusa. No le
 digas al cliente que Stripe manda un recibo.
 
-- [ ] **Traducir las 6 plantillas** de `medusa/src/modules/resend/emails/` al idioma del
-      cliente. Hoy están en inglés con texto placeholder de "Sofa Society" e
-      `info@sofasociety.com` **hardcodeado**. Revisar también los `subjects` en `emails/index.ts`.
+- [ ] **Traducir las plantillas** de `medusa/src/modules/resend/emails/` al idioma del
+      cliente. Están en inglés — pero el **nombre de la tienda y el email de contacto ya
+      son variables** (`STORE_NAME` y `EMAIL_REPLY_TO`): solo hay que traducir el texto,
+      sin tocar ni un literal de marca. Revisar también los `subjects` en `emails/index.ts`.
 - [ ] `RESEND_FROM` con el dominio del cliente
 - [ ] `EMAIL_REPLY_TO` → buzón real (`contact@`), para que las respuestas lleguen a alguien
 - [ ] **`MERCHANT_NOTIFICATION_EMAIL`** → buzón que el cliente mire de verdad.
@@ -153,37 +159,168 @@ error provocado a propósito en Resend que **llega a Sentry como alerta**.
 
 ## Fase 4 — Código listo para desplegar
 
-**Objetivo:** que el repo se pueda construir en un servidor.
+**Objetivo:** que el repo produzca imágenes Docker listas para arrancar en cualquier VPS.
 
-- [ ] Crear `medusa/Dockerfile` (contenido listo en `PRODUCTION_DEPLOY.md` §1)
-- [ ] Crear `storefront/Dockerfile` (contenido listo en `PRODUCTION_DEPLOY.md` §1)
-- [ ] `storefront/next.config.js` — añadir el dominio de R2 en `remotePatterns`
+> 🔁 **Los cuatro puntos de "preparación del starter" se hacen UNA SOLA VEZ**, en el
+> repo base. Cuando clones para un cliente nuevo ya vienen hechos y esta fase se reduce
+> a los dos últimos puntos. Es el trabajo que abarata todos los despliegues siguientes.
+
+### La decisión que gobierna esta fase: dónde se compila la app
+
+Compilar (`yarn build`) es lo que más memoria consume de todo el sistema — **mucho más
+que atender a los visitantes**:
+
+- Atender la tienda con normalidad: **~2 GB** de RAM.
+- Compilarla: **+3 GB extra**, durante 15–25 minutos, en cada despliegue.
+
+Si compilas en el VPS, pagas un servidor de 8 GB para usar 2 GB el 99,9 % del tiempo.
+**Compilando en GitHub Actions (gratis) el pico desaparece y basta un VPS de 4 GB**,
+además de bajar el deploy de 20 minutos a 2 y eliminar el riesgo de que el servidor
+muera a mitad de despliegue.
+
+### Preparación del starter (una vez)
+
+- [ ] **`storefront/next.config.js`: activar `output: "standalone"`**
+      Next empaqueta solo las librerías que usa de verdad, en vez de `node_modules`
+      entero (555 MB en disco, casi todo herramientas de desarrollo que el servidor
+      nunca ejecuta). La imagen baja de ~1,2 GB a ~200 MB.
+      ⚠️ Esto **no afecta a las fotos de producto** — viven en R2 y nunca entran en la
+      imagen Docker. "Imagen" aquí es el paquete de la app, no un JPG.
+- [ ] **`storefront/Dockerfile`: multi-stage que aproveche standalone**
+      (el de `PRODUCTION_DEPLOY.md` §1 copia `node_modules` entero — hay que rehacerlo)
+- [ ] **`medusa/Dockerfile`** (contenido listo en `PRODUCTION_DEPLOY.md` §1).
+      Este no cambia: lo mismo, pero lo ejecuta GitHub en vez del VPS
+- [ ] **Workflow de GitHub Actions** que construya las dos imágenes y las publique en
+      **GHCR** (el registro de GitHub, gratis para repos privados)
+- [ ] **`medusa-config.js`: registrar `cache-redis` y `event-bus-redis`**
+      Los paquetes ya están instalados y Redis ya está en el stack (hoy solo guarda
+      sesiones). **Es fiabilidad, no rendimiento** — sin esto el bus de eventos vive en
+      memoria: si Medusa se reinicia entre el cobro y el envío de los emails, el evento
+      se pierde **sin cola ni reintento** y la clienta no se entera de que ha vendido.
+      A poco volumen es más grave, no menos: perder 1 pedido de 20 es el 5 % del mes
+
+### Por cada cliente
+
+- [ ] `storefront/next.config.js` — añadir el dominio de R2 del cliente en `remotePatterns`
 - [ ] `corepack yarn build` en `medusa/` y `yarn build` en `storefront/`: **ambos sin errores**
 - [ ] `yarn lint` en `storefront/` limpio (es lo que corre el CI)
 - [ ] Commit + push a la rama
 
-**🚪 Puerta:** los dos builds pasan en limpio desde cero y el CI de GitHub está verde.
+**🚪 Puerta:** el workflow de GitHub Actions termina en verde y **las dos imágenes
+aparecen publicadas en GHCR**. A partir de aquí el VPS ya no compila nada.
 
 ---
 
-## Fase 5 — Infraestructura (Hetzner + Coolify)
+## Fase 5 — Infraestructura (un VPS por cliente)
 
 **Objetivo:** levantar el entorno. Primer gasto real.
 
-- [ ] VPS en Hetzner (CX22 o superior) + instalar Coolify
+**Un VPS dedicado por cliente**, siempre. Nada de servidores compartidos entre clientes:
+el aislamiento de datos (RGPD), las claves de Stripe, los backups y la posibilidad de
+migrar o entregar un cliente sin tocar a los demás valen mucho más que los pocos euros
+que ahorraría compartir.
+
+### Qué tamaño de VPS
+
+Con la Fase 4 hecha (la app llega ya compilada desde GHCR), el servidor solo tiene que
+**ejecutar**, nunca construir. El consumo en reposo es de **~2 GB**, así que:
+
+| Cliente | VPS | ~€/mes |
+|---|---|---|
+| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **4 GB RAM · 2–4 vCPU · 40 GB** | **5–9 €** |
+| En crecimiento | 8 GB · 4 vCPU · 80 GB | 13–18 € |
+| Catálogo grande o mucho tráfico | 16 GB · 8 vCPU | ~25 € |
+
+⚠️ **Si por lo que sea NO hiciste la Fase 4** y el VPS compila la app, sube un escalón:
+el mínimo pasa a ser **8 GB**, porque compilar pide ~3 GB extra y con 4 GB el deploy
+muere por falta de memoria.
+
+### Elección de proveedor
+
+Los medios van a Cloudflare R2, así que el disco del servidor casi no crece y el tráfico
+de salida es solo HTML/JSON. Cualquier cuota incluida sobra.
+
+| Proveedor | ~4 GB | ~€/mes | Nota |
+|---|---|---|---|
+| **Hetzner CAX (ARM)** | 2–4 vCPU / 4–8 GB | 4–7 | 🇩🇪 El mejor precio. **Pool de stock distinto al de CPX**: suele haber ARM disponible cuando el x86 está agotado. Todo el stack tiene imágenes arm64 |
+| **Hetzner CPX** | 2–4 vCPU / 4–8 GB | 8–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
+| **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Mejor relación precio/prestaciones tras Hetzner |
+| **OVHcloud** | 2–4 vCPU / 4–8 GB | 8–15 | 🇫🇷 **Argumento comercial con clientes franceses** ("hébergé en France") |
+| **Scaleway** | 2–4 vCPU / 4–8 GB | 10–25 | 🇫🇷 Más caro; en varias gamas el almacenamiento se factura aparte |
+| **Infomaniak** | 4–8 GB | 10–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
+| Contabo | 4 vCPU / 8 GB | 5–6 | ⚠️ El más barato, pero disco lento — mala idea con PostgreSQL |
+
+Hetzner Falkenstein está en Alemania = UE = plenamente conforme al RGPD. Solo hace falta
+un proveedor francés si el cliente lo pide expresamente. La gama CX ya no existe.
+
+### Montaje
+
+- [ ] Contratar el VPS según la tabla + instalar Coolify
+- [ ] **Swap de 4 GB** (red de seguridad barata, recomendada por Coolify)
+- [ ] Cron semanal de `docker system prune -af` (si no, el disco se llena en unos meses)
 - [ ] Coolify: proyecto + **Postgres 16** + **Redis 7** como servicios gestionados
 - [ ] Cloudflare R2: bucket + CORS + API token **restringido a ese bucket**
-- [ ] Coolify: apps `medusa-backend` y `storefront` desde el repo
+- [ ] Coolify: apps `medusa-backend` y `storefront` **apuntando a la imagen de GHCR**,
+      no al repositorio
 - [ ] Variables de entorno en la UI de Coolify (listado completo en `PRODUCTION_DEPLOY.md` §3)
 - [ ] Dominio + DNS apuntando al VPS + **SSL emitido** (Let's Encrypt vía Coolify)
 - [ ] Deploy en orden: backend → migraciones → usuario admin → publishable key → storefront
 - [ ] **Verificar dominio en Resend**: registros **SPF, DKIM y DMARC** en DNS.
       Sin esto los emails van a spam o se rechazan.
 
+### Ajustes de memoria (10 minutos, ahorran ~500 MB)
+
+- [ ] Límites por contenedor en Coolify:
+      Medusa `768M` · Storefront `512M` · Postgres `384M` · Redis `128M`
+      *(con el límite puesto, Node detecta el cgroup y ajusta su memoria solo. Sin
+      límite, V8 reserva ~2 GB de heap y **nunca los devuelve al sistema**)*
+- [ ] Postgres: `shared_buffers=128MB`, `max_connections=50`, `work_mem=4MB`
+- [ ] Redis: `maxmemory 128mb`, `maxmemory-policy allkeys-lru`
+      *(sin techo, Redis crece hasta que el sistema mata algún proceso)*
+- [ ] **Cloudflare delante del storefront**, con caché sobre `/_next/image` — quita del
+      servidor el trabajo de redimensionar fotos, que es su mayor gasto de CPU
+
 **🚪 Puerta:** `https://api.dominio.com/health` responde OK, el admin carga en `/app` con
-SSL válido, y el storefront carga con SSL válido.
+SSL válido, y el storefront carga con SSL válido. Además: `docker stats` con todos los
+contenedores por debajo de su límite, y **un deploy completo en menos de 3 minutos**.
 *(Nota: `/health` solo existe con `medusa start` — el comando de producción. En
 `medusa develop` no está.)*
+
+### ¿Cuánto aguanta este montaje?
+
+Cifras para una tienda de moda con Cloudflare delante.
+
+| | VPS 4 GB | VPS 8 GB |
+|---|---|---|
+| Visitas al mes | hasta ~30.000 | hasta ~150.000 |
+| Pedidos al mes | hasta ~500 | hasta ~2.000 |
+| Productos en catálogo | hasta ~500 | hasta ~2.000 |
+| Visitantes a la vez (pico) | 20–40 | 100–200 |
+
+**Un comercio pequeño francés está muy por debajo de estos límites.** El caso típico
+—10 a 50 pedidos al mes con 2.000–10.000 visitas— cabe en 4 GB con muchísimo margen.
+
+⚠️ **Cuidado al estimar visitas a partir de ventas.** La conversión normal en e-commerce
+es del **1–3 %**, así que:
+
+- 100 pedidos/mes ≈ **5.000** visitas/mes
+- 500 pedidos/mes ≈ **25.000** visitas/mes
+- 1.000 visitas/mes ≈ **10–30** pedidos/mes
+
+Si el cliente espera 100–500 ventas mensuales necesita entre 5.000 y 25.000 visitas: eso
+es presupuesto de marketing, no de servidor. Conviene aclararlo **antes** de firmar.
+
+**El límite que llega antes que el servidor son los emails.** Resend gratis son 3.000
+emails/mes y el sistema manda 3 por venta (ver Fase 3): techo de **~1.000 pedidos/mes**.
+La cuota de correo se agota mucho antes que la RAM.
+
+### Plan B — desplegar sin GitHub Actions
+
+Si algún día despliegas desde GitLab, un repo privado sin CI o directamente a mano,
+Coolify puede compilar en el propio VPS (es lo que describe `PRODUCTION_DEPLOY.md` §2).
+Sigue funcionando, con dos peajes: **el VPS mínimo sube a 8 GB** y cada deploy tarda
+15–25 minutos con riesgo de morir por falta de memoria. Es la salida de emergencia, no
+el camino por defecto.
 
 ---
 
@@ -275,6 +412,13 @@ Es la "receta" que empaqueta la app (código + Node + dependencias) en un conten
 corre idéntico en local y en el servidor. Con Coolify **se necesita uno por app**
 (`medusa/Dockerfile` y `storefront/Dockerfile`). El contenido ya está escrito en
 `PRODUCTION_DEPLOY.md` §1, listo para pegar. Es un archivo por app, se hace una vez.
+
+⚠️ El del **storefront** de §1 está pendiente de rehacer para aprovechar
+`output: "standalone"` (ver Fase 4): hoy copia `node_modules` entero y produce una imagen
+de ~1,2 GB en vez de ~200 MB. El de **Medusa** sirve tal cual.
+
+Quién ejecuta ese Dockerfile es una decisión aparte: **GitHub Actions** (recomendado,
+Fase 4) o el propio VPS (Plan B, Fase 5). El archivo es el mismo en ambos casos.
 
 ## Backlog / opcional (solo si el cliente lo pide)
 

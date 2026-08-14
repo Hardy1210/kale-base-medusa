@@ -17,9 +17,16 @@ import {
 // Google Font API is used to load the Mona Sans font
 // You can find other variants here: https://webfonts.googleapis.com/v1/webfonts?capability=WOFF2&family=Mona%20Sans&subset=latin-ext&key=[YOUR_API_KEY]
 
+// Estos valores se configuran UNA VEZ por cliente en `medusa-config.js` (que los
+// lee del .env) y el servicio los inyecta en TODAS las plantillas — ver
+// `service.tsx`, donde se hace `<Template {...this.layoutOptions} />`.
+// Nunca escribas el nombre de la tienda ni un email de contacto dentro de una
+// plantilla: usa `props.siteTitle` y `props.contactEmail`.
 export type EmailLayoutProps = {
   siteTitle?: string;
   companyName?: string;
+  /** Buzón al que se dirige al cliente si tiene dudas. Sale de EMAIL_REPLY_TO. */
+  contactEmail?: string;
   footerLinks?: {
     url: string;
     label: string;

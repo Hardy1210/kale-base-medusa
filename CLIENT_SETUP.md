@@ -2,6 +2,17 @@
 
 ## Checklist para un cliente nuevo
 
+> ## 🏷️ El nombre de la tienda se cambia en DOS sitios. Nada más.
+>
+> | Dónde | Qué cubre |
+> |---|---|
+> | **`storefront/src/lib/brand.ts`** → `name` | Todo el storefront: header, footer, checkout, titles, SEO, sitemap |
+> | **`medusa/.env`** → `STORE_NAME` | Todos los emails: asuntos, cuerpo, cabecera y pie |
+>
+> **No busques literales por el proyecto.** Desde el commit que centralizó la marca no
+> queda ni un nombre escrito a mano en componentes ni en plantillas de email. Si alguna
+> vez añades uno nuevo, usa `brand.name` (storefront) o `props.siteTitle` (emails).
+
 ### 1. SEO y marca — `storefront/src/lib/brand.ts`
 **Este es el primer archivo que debes editar.** Contiene todos los textos SEO del storefront:
 
@@ -19,21 +30,31 @@
 **og:image por defecto:** añadir la imagen en `storefront/public/images/og-default.jpg`.
 Sin este archivo, las páginas que no tienen imagen propia no tendrán preview en redes.
 
-### 2. Branding en el código
-Busca `Mi Tienda` en todo el proyecto y reemplaza por el nombre real del cliente:
+### 2. Branding en el código — ✅ ya no hay nada que buscar
 
-| Archivo | Qué cambiar |
-|---|---|
-| `storefront/src/components/Header.tsx` | Nombre en la barra de navegación |
-| `storefront/src/components/Footer.tsx` | Nombre y copyright del pie de página |
-| `storefront/src/app/.../checkout/layout.tsx` | Nombre en el header del checkout |
-| `storefront/src/app/.../auth/login/page.tsx` y `loading.tsx` | Texto de bienvenida en login |
-| `storefront/src/app/.../auth/register/page.tsx` y `loading.tsx` | Texto de bienvenida en registro |
-| `medusa/medusa-config.js` → `siteTitle`, `companyName`, `footerLinks` | Nombre y links en emails transaccionales |
+Estos archivos **ya leen el nombre de `brand.name`**. No los toques:
+
+- `storefront/src/components/Header.tsx` — barra de navegación
+- `storefront/src/components/Footer.tsx` — nombre y copyright
+- `storefront/src/app/[countryCode]/(checkout)/layout.tsx` — header del checkout (×2)
+
+Y estos **ya leen `STORE_NAME` del `.env`** a través de `medusa-config.js`, que inyecta
+`siteTitle` / `companyName` / `contactEmail` en **todas** las plantillas:
+
+- `medusa/src/modules/resend/emails/*.tsx` — las 7 plantillas
+- `medusa/src/modules/resend/emails/index.ts` — los asuntos
+
+> Las páginas de `auth` (login/register) solo dicen "Welcome back!", sin nombre de
+> tienda: no hay nada que reemplazar ahí.
+
+**Lo que sí hay que reescribir por cliente** (es contenido, no configuración — ver punto 6):
+las páginas legales, la home y el `about`, que todavía traen texto del starter en inglés.
 
 ### 3. Variables de entorno a personalizar
 | Variable | Archivo | Valor para el cliente |
 |---|---|---|
+| `STORE_NAME` | `medusa/.env` | Nombre de la tienda — **alimenta todos los emails** |
+| `EMAIL_REPLY_TO` | `medusa/.env` | Buzón de contacto: sale como reply-to **y** dentro del email de confirmación de pedido |
 | `RESEND_FROM` | `medusa/.env` | `"Nombre Tienda <noreply@dominio.com>"` |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | `storefront/.env.local` | URL real de Instagram |
 | `NEXT_PUBLIC_BASE_URL` | `storefront/.env.local` | URL pública del storefront en producción |

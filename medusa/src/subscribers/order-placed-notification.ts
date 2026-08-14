@@ -14,6 +14,9 @@ export default async function sendOrderConfirmationHandler({
     entity: 'order',
     fields: [
       'id',
+      // Número de pedido que ve el cliente (#1234). Sin este campo la
+      // plantilla no puede mostrarlo.
+      'display_id',
       'currency_code',
       'total',
       'subtotal',

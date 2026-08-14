@@ -15,6 +15,7 @@ import EmailLayout, { EmailLayoutProps } from './components/EmailLayout';
 type Props = {
   order: Pick<
     HttpTypes.AdminOrder,
+    | 'display_id'
     | 'currency_code'
     | 'email'
     | 'shipping_address'
@@ -53,6 +54,8 @@ export default function OrderPlacedEmail({
   arr.push(...order.items);
   arr.push(...order.items);
 
+  const contactEmail = emailLayoutProps.contactEmail;
+
   return (
     <EmailLayout {...emailLayoutProps}>
       <Heading className="text-2xl font-medium mt-0 mb-10">
@@ -60,11 +63,14 @@ export default function OrderPlacedEmail({
       </Heading>
       <Text className="text-md !mb-6">
         We are pleased to confirm that your order has been successfully placed
-        and will be processed shortly. Your order number is #100002.
+        and will be processed shortly. Your order number is #
+        {order.display_id}.
       </Text>
       <Text className="text-md !mb-6">
-        You&apos;ll receive another update once your order is shipped. For any
-        questions, feel free to contact us at info@sofasociety.com.
+        You&apos;ll receive another update once your order is shipped.
+        {contactEmail
+          ? ` For any questions, feel free to contact us at ${contactEmail}.`
+          : ' For any questions, simply reply to this email.'}
       </Text>
       <Text className="text-md !mb-20">Thank you for shopping with us!</Text>
       <Section className="mb-6">
@@ -257,6 +263,7 @@ export default function OrderPlacedEmail({
 
 OrderPlacedEmail.PreviewProps = {
   order: {
+    display_id: 1234,
     currency_code: 'EUR',
     email: 'example@medusa.local',
     shipping_address: {

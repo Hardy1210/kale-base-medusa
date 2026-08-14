@@ -17,13 +17,15 @@ export default function AuthPasswordForgotResetEmail({
   token,
   ...emailLayoutProps
 }: Props & EmailLayoutProps) {
+  const storeName = emailLayoutProps.siteTitle || "Mi Tienda";
+
   return (
     <EmailLayout {...emailLayoutProps}>
       <Heading className="text-2xl mt-0 mb-10 font-medium">
         Reset your password
       </Heading>
       <Text className="text-md !mb-10">
-        We received a request to reset your Sofa Society account password. Click
+        We received a request to reset your {storeName} account password. Click
         below to set a new password:
       </Text>
       <Button

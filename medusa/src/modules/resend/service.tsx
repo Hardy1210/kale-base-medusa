@@ -47,6 +47,14 @@ export default class ResendNotificationProviderService extends AbstractNotificat
       layoutOptions.companyName = options.companyName;
     }
 
+    if (
+      'contactEmail' in options &&
+      typeof options.contactEmail === 'string' &&
+      options.contactEmail
+    ) {
+      layoutOptions.contactEmail = options.contactEmail;
+    }
+
     if ('footerLinks' in options) {
       if (
         !Array.isArray(options.footerLinks) ||

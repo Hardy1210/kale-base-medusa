@@ -43,22 +43,24 @@ export default function WelcomeEmail({
   customer,
   ...emailLayoutProps
 }: Props & EmailLayoutProps) {
+  const storeName = emailLayoutProps.siteTitle || 'Mi Tienda';
+
   return (
     <EmailLayout {...emailLayoutProps}>
       <Heading className="text-2xl mt-0 mb-10 font-medium">
-        Welcome to Sofa Society!
+        Welcome to {storeName}!
       </Heading>
       <Text className="text-md !mb-8">
-        Welcome to Sofa Society! We're excited to have you join our community of
-        comfort enthusiasts. With our carefully crafted sofas, you&apos;re just
-        steps away from adding elegance and coziness to your living space.
+        Welcome to {storeName}! We&apos;re excited to have you join our
+        community. Your account is ready, so you can start exploring our
+        collections whenever you like.
       </Text>
       <Text className="text-md font-semibold !mb-8">
         As a new member, here&apos;s what you can expect:
       </Text>
       <UnorderedList className="mb-8">
         <UnorderedListItem className="text-md">
-          Premium, high-quality sofas in a range of styles and materials
+          A carefully curated selection of products
         </UnorderedListItem>
         <UnorderedListItem className="text-md">
           Dedicated customer support ready to assist you
@@ -67,13 +69,13 @@ export default function WelcomeEmail({
           Exclusive offers and early access to new collections
         </UnorderedListItem>
         <UnorderedListItem className="text-md">
-          Explore our collections and find the sofa that suits your style!
+          A faster checkout, with your details already saved
         </UnorderedListItem>
       </UnorderedList>
       <Text className="text-md">
         Best wishes,
         <br />
-        The Sofa Society Team
+        The {storeName} Team
       </Text>
     </EmailLayout>
   );

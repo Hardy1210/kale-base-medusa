@@ -5,6 +5,7 @@ import { twMerge } from "tailwind-merge"
 import { Layout, LayoutColumn } from "@/components/Layout"
 import { NewsletterForm } from "@/components/NewsletterForm"
 import { LocalizedLink } from "@/components/LocalizedLink"
+import { brand } from "@lib/brand"
 
 export const Footer: React.FC = () => {
   const pathName = usePathname()
@@ -26,10 +27,10 @@ export const Footer: React.FC = () => {
             <div className="flex flex-1 max-lg:w-full max-lg:order-2 max-sm:flex-col justify-between sm:gap-30 lg:gap-20 md:items-center">
               <div className="max-w-35 md:flex-1 max-md:mb-9">
                 <h1 className="text-lg md:text-xl mb-2 md:mb-6 leading-none md:leading-[0.9]">
-                  Mi Tienda
+                  {brand.name}
                 </h1>
                 <p className="text-xs">
-                  &copy; {new Date().getFullYear()}, Mi Tienda
+                  &copy; {new Date().getFullYear()}, {brand.name}
                 </p>
               </div>
               <div className="flex gap-10 xl:gap-18 max-md:text-xs flex-1 justify-between lg:justify-center">

@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Layout, LayoutColumn } from "@/components/Layout"
 import { LocalizedLink } from "@/components/LocalizedLink"
+import { brand } from "@lib/brand"
 import dynamic from "next/dynamic"
 
 const CheckoutSummaryWrapper = dynamic(
@@ -23,7 +24,7 @@ export default function CheckoutLayout({
         <LayoutColumn>
           <div className="flex justify-between items-center h-18">
             <LocalizedLink href="/" className="text-md font-medium">
-              Mi Tienda
+              {brand.name}
             </LocalizedLink>
             <div>
               <p className="font-semibold">Checkout</p>
@@ -45,7 +46,7 @@ export default function CheckoutLayout({
               href="/"
               className="text-md font-medium mb-16 inline-block max-lg:hidden"
             >
-              Mi Tienda
+              {brand.name}
             </LocalizedLink>
             {children}
           </div>

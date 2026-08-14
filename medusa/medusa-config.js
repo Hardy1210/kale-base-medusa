@@ -84,12 +84,17 @@ module.exports = defineConfig({
               from: process.env.RESEND_FROM,
               // Reply-To: las respuestas de los clientes van a contact@ (via .env)
               replyTo: process.env.EMAIL_REPLY_TO,
-              siteTitle: 'Mi Tienda',
-              companyName: 'Mi Tienda',
+              // ── Marca en los emails ────────────────────────────────────
+              // Se configura por cliente en el .env (STORE_NAME). Estos
+              // valores llegan a TODAS las plantillas como props; no hay que
+              // tocar ningún .tsx para cambiar el nombre de la tienda.
+              siteTitle: process.env.STORE_NAME || 'Mi Tienda',
+              companyName: process.env.STORE_NAME || 'Mi Tienda',
+              contactEmail: process.env.EMAIL_REPLY_TO,
               footerLinks: [
                 {
-                  url: 'https://tutienda.com',
-                  label: 'Mi Tienda',
+                  url: process.env.STOREFRONT_URL || 'https://tutienda.com',
+                  label: process.env.STORE_NAME || 'Mi Tienda',
                 },
               ],
             },
@@ -107,12 +112,13 @@ module.exports = defineConfig({
           //     api_key: process.env.BREVO_API_KEY,
           //     from: process.env.BREVO_FROM,
           //     replyTo: process.env.EMAIL_REPLY_TO,
-          //     siteTitle: 'Mi Tienda',
-          //     companyName: 'Mi Tienda',
+          //     siteTitle: process.env.STORE_NAME || 'Mi Tienda',
+          //     companyName: process.env.STORE_NAME || 'Mi Tienda',
+          //     contactEmail: process.env.EMAIL_REPLY_TO,
           //     footerLinks: [
           //       {
-          //         url: 'https://tutienda.com',
-          //         label: 'Mi Tienda',
+          //         url: process.env.STOREFRONT_URL || 'https://tutienda.com',
+          //         label: process.env.STORE_NAME || 'Mi Tienda',
           //       },
           //     ],
           //   },
