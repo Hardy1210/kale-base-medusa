@@ -537,6 +537,17 @@ el mismo en los dos casos. El archivo es el mismo en ambos casos.
   starter**: frágil entre versiones de Medusa y la confirmación de Medusa ya cubre la
   función legal y comercial.
 - [ ] **Emails de pedido cancelado / reembolsado** — no existen hoy
+- [ ] **Suite E2E de Playwright (`storefront/e2e/`)** — **opcional, NO es puerta de
+  producción.** Los tests existen y `pg` ya está instalado, así que no estorban ni
+  bloquean el build; simplemente no se ejecutan.
+  Ponerlos en verde son ~6-12 h porque prueban una tienda que ya no existe: buscan un
+  producto "Sweatshirt" y rellenan direcciones de Denver, del seed del starter vanilla.
+  Además hay que montar una BD de test aparte (la suite **borra y recrea** la base).
+  Después, ~1-3 h por cliente, porque Playwright se agarra a textos y nombres de producto
+  y cada tienda los cambia.
+  **Cuándo compensa:** cuando lleves varias tiendas y toques el checkout a menudo.
+  Mientras tanto lo cubre la compra real de la Fase 7, que son 10 minutos y prueba
+  Stripe en modo live.
 
 ## Notas de entorno local (esta máquina)
 
