@@ -235,7 +235,7 @@ el momento peor:
 
 | Cliente | VPS | ~€/mes |
 |---|---|---|
-| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **8 GB RAM · 4 vCPU · 80 GB** | **13–18 €** |
+| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **8 GB RAM · 4 vCPU · 75–80 GB** | **~9–15 €** |
 | Catálogo grande o mucho tráfico | 16 GB · 8 vCPU | ~25 € |
 
 ⛔ **4 GB no vale.** Sobra para atender la tienda, pero el despliegue muere por falta de
@@ -252,21 +252,36 @@ de salida es solo HTML/JSON. Cualquier cuota incluida sobra.
 
 | Proveedor | Perfil 8 GB | ~€/mes | Nota |
 |---|---|---|---|
-| **Hetzner CAX (ARM)** | 4 vCPU / 8 GB | ~7 | 🇩🇪 El mejor precio. **Pool de stock distinto al de CPX**: suele haber ARM disponible cuando el x86 está agotado. Todo el stack tiene imágenes arm64 |
-| **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Mejor relación precio/prestaciones tras Hetzner |
-| **Hetzner CPX** | 4 vCPU / 8 GB | 14–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
-| **OVHcloud** | 4 vCPU / 8 GB | 13–18 | 🇫🇷 **Argumento comercial con clientes franceses** ("hébergé en France") |
+| ⭐ **OVHcloud VPS** | **4 vCore / 8 GB / 75 GB NVMe** | **~8,65** | 🇫🇷 **La opción por defecto.** Tráfico ilimitado a 1 Gbit/s y **backup automático de 1 día incluido**. Datacenters en Francia: argumento comercial directo con el cliente |
+| **Hetzner CAX (ARM)** | 4 vCPU / 8 GB | ~7 | 🇩🇪 Algo más barato, pero **el stock es su punto débil** — suele estar agotado. Todo el stack tiene imágenes arm64 |
+| **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Alternativa sólida si OVH y Hetzner fallan |
 | **Infomaniak** | 8 GB | 13–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
+| **Hetzner CPX** | 4 vCPU / 8 GB | 14–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
 | **Scaleway** | 2–4 vCPU / 8 GB | 18–25 | 🇫🇷 Más caro; en varias gamas el almacenamiento se factura aparte |
 | Contabo | 4 vCPU / 8 GB | 5–6 | ⚠️ El más barato, pero disco lento — mala idea con PostgreSQL |
 
-Hetzner Falkenstein está en Alemania = UE = plenamente conforme al RGPD. Solo hace falta
-un proveedor francés si el cliente lo pide expresamente. La gama CX ya no existe.
+Alemania y Suiza también valen para el RGPD: solo hace falta un proveedor francés si el
+cliente lo pide expresamente. La gama CX de Hetzner ya no existe.
 
 💡 **Compilando en el VPS, ARM deja de tener pega.** Coolify compila directamente sobre
 la máquina, así que no hay cross-compilación de por medio (que es lo que sí complica el
-ARM cuando se usa CI). Eso deja **Hetzner CAX** como la mejor opción de la tabla: 8 GB
-por ~7 €. Comprueba el stock, que es su punto débil.
+ARM cuando se usa CI). Hetzner CAX sigue siendo válido — si encuentras stock.
+
+### Compromiso de permanencia (OVH: *aucun* / 6 mois / 12 mois)
+
+Los 12 meses salen más baratos, pero **la regla es no comprometerte con el proveedor más
+de lo que el cliente se compromete contigo.** Si el cliente se va en el mes 3 y tú tienes
+9 meses pagados por delante, esa diferencia la comes tú.
+
+- [ ] **Antes de que la tienda esté en línea → `aucun engagement`.** Un proyecto puede
+      caerse (el cliente no aprueba, cambia de idea, se retrasa). Pagas 2–3 € más al mes
+      por poder cancelar sin arrastrar nada.
+- [ ] **Con la tienda en producción y el cliente pagando mantenimiento → 12 meses.**
+      Una tienda viva no se muda: ahí el descuento es dinero gratis. El salto se hace en
+      la renovación.
+
+Y repercútelo: el VPS es un coste del cliente, no tuyo. Que aparezca como línea en su
+factura desde el primer mes.
 
 ### Montaje
 
