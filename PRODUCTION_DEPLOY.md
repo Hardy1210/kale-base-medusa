@@ -3,7 +3,14 @@
 **Este documento empieza donde `CLIENT_SETUP.md` termina.**
 Úsalo cuando el código ya está configurado para el cliente y hay que subirlo a producción.
 
-**Stack:** Hetzner VPS · Coolify · Cloudflare R2 · Stripe · Resend · PostgreSQL 16 · Redis 7
+**Stack:** OVHcloud VPS · Coolify · Cloudflare R2 · Stripe · Resend · PostgreSQL 16 · Redis 7
+· Sentry · Better Stack
+
+**VPS de referencia:** OVH **VPS-2** — 4 vCore / 8 GB RAM / 75 GB NVMe / 1 Gbit/s sin
+límite, Ubuntu 24.04 LTS, datacenter de **Estrasburgo (Francia)**.
+Los 8 GB no son por tráfico sino por el despliegue: Coolify compila en el propio
+servidor y la compilación pide ~3 GB extra. Justificación completa y alternativas en
+[`ROADMAP_PRODUCCION.md` § Fase 5](./ROADMAP_PRODUCCION.md#fase-5--infraestructura-un-vps-por-cliente).
 
 ---
 
@@ -102,6 +109,11 @@ CMD ["yarn", "start", "-p", "8000"]
 ### Backend — `medusa-backend`
 
 ```env
+# ⚠️ OBLIGATORIA Y FÁCIL DE OLVIDAR. El CLI de Medusa asume "development" si no
+# está definida, y de ella depende que se activen las comprobaciones de
+# seguridad de medusa-config.js (ver JWT_SECRET más abajo).
+NODE_ENV=production
+
 # Generadas por Coolify al crear los servicios
 DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
@@ -115,9 +127,14 @@ STORE_CORS=https://tienda.tudominio.com
 ADMIN_CORS=https://api.tudominio.com
 AUTH_CORS=https://api.tudominio.com
 
-# Secrets — generar con: openssl rand -hex 32
+# Secrets — generar uno DISTINTO para cada una con: openssl rand -hex 32
+# Con NODE_ENV=production el backend se niega a arrancar si falta alguna, si
+# vale "supersecret" o si tiene menos de 32 caracteres.
 JWT_SECRET=
 COOKIE_SECRET=
+
+# Marca — cubre TODOS los emails (asuntos, cuerpo, cabecera y pie)
+STORE_NAME=Mi Tienda
 
 # Stripe
 STRIPE_API_KEY=sk_live_...
@@ -135,6 +152,15 @@ S3_FORCE_PATH_STYLE=true
 # Resend
 RESEND_API_KEY=re_...
 RESEND_FROM=Mi Tienda <noreply@tudominio.com>
+# Buzón real del cliente: adonde van las respuestas a los emails automáticos
+EMAIL_REPLY_TO=contact@tudominio.com
+
+# ⚠️ Sin esta variable NO se envía el aviso de venta al comerciante, y es la
+# única señal automática de que hay un pedido que preparar.
+MERCHANT_NOTIFICATION_EMAIL=
+
+# Sentry — proyecto del BACKEND (distinto del storefront)
+SENTRY_DSN=
 ```
 
 ### Storefront — `storefront`
@@ -149,6 +175,7 @@ NEXT_PUBLIC_STRIPE_KEY=pk_live_...               ← obligatorio, el build falla
 REVALIDATE_SECRET=                               ← openssl rand -hex 32
 NEXT_PUBLIC_INSTAGRAM_URL=https://instagram.com/tutienda
 DISALLOW_ROBOTS=                                 ← dejar vacío en producción
+NEXT_PUBLIC_SENTRY_DSN=                          ← proyecto del STOREFRONT, no el del backend
 ```
 
 ---

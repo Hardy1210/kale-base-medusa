@@ -294,7 +294,7 @@ de salida es solo HTML/JSON. Cualquier cuota incluida sobra.
 
 | Proveedor | Perfil 8 GB | ~€/mes | Nota |
 |---|---|---|---|
-| ⭐ **OVHcloud VPS** | **4 vCore / 8 GB / 75 GB NVMe** | **~8,65** | 🇫🇷 **La opción por defecto.** Tráfico ilimitado a 1 Gbit/s y **backup automático de 1 día incluido**. Datacenters en Francia: argumento comercial directo con el cliente |
+| ⭐ **OVHcloud VPS-2** | **4 vCore / 8 GB / 75 GB NVMe** | **~8,65** | 🇫🇷 **La opción por defecto.** Tráfico ilimitado a 1 Gbit/s y **backup automático de 1 día incluido**. Datacenters en Francia: argumento comercial directo con el cliente |
 | **Hetzner CAX (ARM)** | 4 vCPU / 8 GB | ~7 | 🇩🇪 Algo más barato, pero **el stock es su punto débil** — suele estar agotado. Todo el stack tiene imágenes arm64 |
 | **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Alternativa sólida si OVH y Hetzner fallan |
 | **Infomaniak** | 8 GB | 13–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
@@ -326,6 +326,11 @@ Y repercútelo: el VPS es un coste del cliente, no tuyo. Que aparezca como líne
 factura desde el primer mes.
 
 ### Montaje
+
+> **Configuración de referencia (validada):** OVH **VPS-2**, 4 vCore / 8 GB / 75 GB NVMe,
+> **Ubuntu 24.04 LTS**, datacenter de **Estrasburgo**. Elegir siempre la LTS: Coolify la
+> soporta oficialmente y trae 5 años de parches de seguridad. La gama CX de Hetzner ya no
+> existe y las CAX suelen estar sin stock, así que OVH es la opción realista hoy.
 
 - [ ] Contratar el VPS según la tabla + instalar Coolify
 - [ ] **Swap de 4 GB** (red de seguridad barata, recomendada por Coolify)
@@ -420,6 +425,9 @@ gratuitos de Actions en repos privados, compartidos entre todos tus repos.
 es opcional y ninguno es caro — lo caro es saltárselo.
 
 ### Secretos
+- [ ] **`NODE_ENV=production` definida en Coolify.** Va la primera porque de ella
+      dependen las demás comprobaciones: el CLI de Medusa asume `development` si no
+      está, y con eso el guard de secretos del punto siguiente **no se activa**
 - [ ] `JWT_SECRET` y `COOKIE_SECRET` generados con `openssl rand -hex 32`.
       Con `NODE_ENV=production` Medusa **se niega a arrancar** si falta alguno, si vale
       `supersecret` o si tiene menos de 32 caracteres (`resolveSigningSecret` en
@@ -435,7 +443,9 @@ es opcional y ninguno es caro — lo caro es saltárselo.
 ### Red y servidor
 - [ ] **Postgres y Redis NO expuestos a internet.** Solo red interna de Coolify.
       Verifícalo desde fuera: `nc -zv IP 5432` y `nc -zv IP 6379` deben fallar
-- [ ] Firewall de Hetzner: solo **22, 80, 443** abiertos
+- [ ] Firewall solo con **22, 80, 443** abiertos. En OVH el firewall de red se
+      configura en el panel del VPS; complétalo con `ufw` en la propia máquina, porque
+      el de OVH no filtra el tráfico entre servicios locales
 - [ ] SSH con **clave, sin contraseña** (`PasswordAuthentication no`); root sin login directo
 - [ ] Actualizaciones de seguridad automáticas (`unattended-upgrades`)
 - [ ] Panel de Coolify con contraseña fuerte y **2FA activado**
