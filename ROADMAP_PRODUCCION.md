@@ -5,7 +5,7 @@ Detalle de cada punto en [`CLIENT_SETUP.md`](./CLIENT_SETUP.md) (personalizació
 [`PRODUCTION_DEPLOY.md`](./PRODUCTION_DEPLOY.md) (deploy).
 
 **Stack de destino:** VPS europeo + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
-+ Stripe + Resend + Sentry.
++ Stripe + Resend + Sentry + Better Stack.
 
 **Un VPS dedicado de 8 GB por cliente**, y Coolify compila la app en el propio servidor:
 sin CI, sin registros de imágenes, una pieza menos que mantener
@@ -27,7 +27,9 @@ Las fases 0–4 se hacen **en local, sin gastar un céntimo en servidor**. La in
 (Fase 5) es lo último que se contrata.
 
 **Progreso estimado del starter base: ~60%.** La app está lista (pagos, emails,
-notificaciones, catálogo, observabilidad). Falta personalización por cliente + infra.
+notificaciones, catálogo, observabilidad). La instrumentación de errores está **cableada
+en los dos paquetes** y es no-op sin DSN: para cada cliente solo hay que dar de alta las
+cuentas y pegar las claves. Falta personalización por cliente + infra.
 
 ---
 
@@ -141,8 +143,6 @@ digas al cliente que Stripe manda un recibo.
 - [ ] `EMAIL_REPLY_TO` → buzón real (`contact@`), para que las respuestas lleguen a alguien
 - [ ] **`MERCHANT_NOTIFICATION_EMAIL`** → buzón que el cliente mire de verdad.
       **Sin esta variable no se envía el aviso de venta.**
-- [ ] `SENTRY_DSN` + **crear la regla de alerta en Sentry**. Sin la regla el error se
-      queda en el dashboard y nadie lo mira; es el paso que se olvida siempre.
 - [ ] Enseñar al cliente a activar en **su** cuenta Stripe (cero código, 2 minutos):
       Settings → Profile → Communication preferences → *Successful payments*, y las push
       de la app móvil de Stripe. Es una señal de venta independiente de Resend.
@@ -152,9 +152,51 @@ digas al cliente que Stripe manda un recibo.
       Alternativa gratuita mayor: Brevo (300/día) — módulo ya escrito y comentado en
       `medusa-config.js`, pero **estampa "Sent with Brevo"** en cada email.
 
-**🚪 Puerta:** pedido de prueba que dispara y entrega **los 3 emails** (comprador,
-comerciante, y el de envío al marcar fulfillment), campanita con el pedido visible, y un
-error provocado a propósito en Resend que **llega a Sentry como alerta**.
+### Alertas: enterarte tú antes que el cliente
+
+> 🔁 **El código ya está hecho en el repo base.** Aquí solo quedan cuentas, claves y
+> dominios, que son distintos en cada tienda. No hay nada que programar.
+
+Tres capas que **no se solapan**: cada una ve lo que las otras dos no pueden ver.
+
+| Capa | Herramienta | Detecta | Si falta |
+|---|---|---|---|
+| Errores backend | Sentry (proyecto Medusa) | Excepción dentro de Medusa | Los 500 del checkout pasan desapercibidos |
+| Errores frontend | Sentry (proyecto storefront) | Pantalla rota para el comprador | Pierdes ventas sin enterarte |
+| Disponibilidad | Better Stack | Que no responde **nadie** | Una caída del VPS es silencio absoluto |
+
+La tercera capa es la que no se puede sustituir con las otras: Sentry reporta **desde
+dentro** del proceso. Si el VPS se queda sin RAM, si Coolify no levanta el contenedor
+tras un redeploy o si caduca el certificado, no queda proceso vivo que avise y Sentry
+se queda mudo.
+
+- [ ] **Dos proyectos en Sentry**, no uno: `<cliente>-medusa` y `<cliente>-storefront`.
+      Separarlos permite silenciar el ruido de uno sin perder de vista el otro.
+- [ ] `SENTRY_DSN` (backend, en `medusa/.env`) y `NEXT_PUBLIC_SENTRY_DSN`
+      (storefront). El del storefront viaja al navegador a propósito: un DSN solo
+      permite **enviar** eventos, nunca leerlos.
+- [ ] **Crear la regla de alerta en cada proyecto de Sentry.** Sin la regla el error se
+      queda en el dashboard y nadie lo mira; es el paso que se olvida siempre.
+- [ ] **Better Stack** (plan gratuito: 10 monitores). Dos monitores, cada 3 minutos:
+      - `https://<dominio-cliente>/api/health` → storefront
+      - `https://api.<dominio-cliente>/health` → Medusa
+      Están separados a propósito: cuando salte la alerta ya sabes **cuál** de los dos
+      ha caído, sin ir a mirar.
+- [ ] Avisos de Better Stack a **email + push del móvil**. El email solo no vale: una
+      caída a las 23:00 un sábado tiene que sonar.
+- [ ] Activar el **badge de status page** solo si el cliente lo pide. Por defecto no:
+      expone las caídas a sus propios compradores.
+
+**🚪 Puerta:** cuatro comprobaciones, en este orden.
+
+1. Pedido de prueba que dispara y entrega **los 3 emails** (comprador, comerciante, y el
+   de envío al marcar fulfillment), con la campanita del admin mostrando el pedido.
+2. Error provocado a propósito en Resend que **llega a Sentry como alerta** (no solo al
+   dashboard: la alerta tiene que salir del navegador).
+3. Error provocado en el storefront que llega al **otro** proyecto de Sentry.
+4. **Apagar el contenedor a mano** y comprobar que Better Stack te despierta el móvil
+   **antes de que a ti se te ocurra mirar**. Es la única prueba que valida el objetivo
+   real de esta fase; las tres anteriores solo validan las tuberías.
 
 ---
 
@@ -379,7 +421,10 @@ es opcional y ninguno es caro — lo caro es saltárselo.
 
 ### Secretos
 - [ ] `JWT_SECRET` y `COOKIE_SECRET` generados con `openssl rand -hex 32`.
-      **Nunca `supersecret`**, que es el valor por defecto en `medusa-config.js`
+      Con `NODE_ENV=production` Medusa **se niega a arrancar** si falta alguno, si vale
+      `supersecret` o si tiene menos de 32 caracteres (`resolveSigningSecret` en
+      `medusa-config.js`). Ya no puede colarse en silencio, pero sigue siendo el primer
+      punto a verificar: el error aparece en el despliegue, no antes
 - [ ] Secretos distintos entre local y producción, y distintos por cliente
 - [ ] `.env` **no** commiteado (ya está en `.gitignore`, verifícalo con `git log -- medusa/.env`)
 - [ ] Ninguna clave secreta en variables `NEXT_PUBLIC_*` — **son públicas en el navegador**
@@ -400,7 +445,10 @@ es opcional y ninguno es caro — lo caro es saltárselo.
 - [ ] HTTPS forzado con redirección desde HTTP, y HSTS activado
 - [ ] Usuario admin con contraseña fuerte, guardada en gestor de contraseñas.
       Borrar cualquier usuario de prueba del seed
-- [ ] `STRIPE_WEBHOOK_SECRET` configurado — sin él el webhook acepta peticiones falsas
+- [ ] `STRIPE_WEBHOOK_SECRET` configurado (ya está en `medusa/.env.template`).
+      Corrección: sin él el webhook **no** acepta peticiones falsas — la verificación de
+      firma lanza excepción y rechaza todo. El riesgo es funcional, no de seguridad:
+      Stripe no puede confirmar los cobros y los pedidos se quedan colgados sin pagar
 - [ ] `corepack yarn npm audit` en `medusa/` y `yarn audit` en `storefront/`:
       cero vulnerabilidades críticas o altas
 - [ ] `robots.txt` **sin `Disallow: /`** (si no, Google no indexa nada)
@@ -442,7 +490,10 @@ operar el admin sin ayuda.
 
 ## Fase 8 — Después del lanzamiento
 
-- [ ] Vigilar Sentry la primera semana: los fallos de email salen ahí
+- [ ] Vigilar **los dos proyectos de Sentry** la primera semana: los fallos de email
+      salen en el del backend, las pantallas rotas en el del storefront
+- [ ] Revisar el histórico de Better Stack al mes: microcaídas repetidas de 1-2 minutos
+      suelen ser el VPS quedándose corto de RAM, no un fallo puntual
 - [ ] Revisar el consumo de Resend al mes (límite de 3.000/mes en el plan gratis)
 - [ ] Confirmar que los backups se están ejecutando de verdad
 - [ ] 🇫🇷 **Antes de sept 2027:** conectar el e-reporting B2C. La vía normal es
