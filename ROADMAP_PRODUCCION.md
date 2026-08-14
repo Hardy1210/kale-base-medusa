@@ -198,12 +198,14 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
 - [ ] **`storefront/Dockerfile`: multi-stage que aproveche standalone**
       (el de `PRODUCTION_DEPLOY.md` §1 copia `node_modules` entero — hay que rehacerlo)
 - [ ] **`medusa/Dockerfile`** (contenido listo en `PRODUCTION_DEPLOY.md` §1, sirve tal cual)
-- [ ] **`medusa-config.js`: registrar `cache-redis` y `event-bus-redis`**
-      Los paquetes ya están instalados y Redis ya está en el stack (hoy solo guarda
-      sesiones). **Es fiabilidad, no rendimiento** — sin esto el bus de eventos vive en
-      memoria: si Medusa se reinicia entre el cobro y el envío de los emails, el evento
-      se pierde **sin cola ni reintento** y la clienta no se entera de que ha vendido.
-      A poco volumen es más grave, no menos: perder 1 pedido de 20 es el 5 % del mes
+- [x] ~~**`medusa-config.js`: registrar los módulos de Redis**~~ ✅ **HECHO en el starter.**
+      Registrados `cache-redis`, `event-bus-redis` y `workflow-engine-redis`.
+      **Es fiabilidad, no rendimiento**: antes el bus de eventos vivía en memoria, así que
+      si Medusa se reiniciaba entre el cobro y el envío de los emails el evento se perdía
+      **sin cola ni reintento** y la clienta no se enteraba de que había vendido. A poco
+      volumen es más grave, no menos: perder 1 pedido de 20 es el 5 % del mes.
+      ⚠️ **`REDIS_URL` pasa a ser obligatoria**: sin ella Medusa ya no arranca. Es
+      deliberado — mejor un error ruidoso que una caída silenciosa a memoria volátil
 
 ### Por cada cliente
 

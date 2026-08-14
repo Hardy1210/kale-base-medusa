@@ -21,6 +21,48 @@ module.exports = defineConfig({
     },
   },
   modules: [
+    // ─────────────────────────────────────────────────────────────────────
+    // INFRAESTRUCTURA EN REDIS
+    //
+    // Sin estos tres módulos Medusa usa versiones "in-memory" y arranca igual,
+    // pero con dos problemas serios en producción:
+    //
+    //   1. El bus de eventos no tiene cola ni reintentos. Si el proceso se
+    //      reinicia entre el cobro y el envío de los emails (un deploy, un
+    //      pico, un fallo), el evento se pierde para siempre: pedido cobrado
+    //      y el comerciante sin enterarse. A poco volumen es MÁS grave, no
+    //      menos: perder 1 pedido de 20 es el 5 % del mes.
+    //   2. La caché vive en el heap de Node, así que el consumo de memoria del
+    //      proceso crece con los días de uptime en lugar de mantenerse plano.
+    //
+    // Requieren REDIS_URL. Si falta, el arranque falla — y es lo que queremos:
+    // más vale un error ruidoso que una caída silenciosa a memoria volátil.
+    // Redis ya está en el stack (docker-compose en local, servicio de Coolify
+    // en producción); esto solo lo aprovecha.
+    // ─────────────────────────────────────────────────────────────────────
+    {
+      resolve: '@medusajs/medusa/cache-redis',
+      options: {
+        redisUrl: process.env.REDIS_URL,
+      },
+    },
+    {
+      resolve: '@medusajs/medusa/event-bus-redis',
+      options: {
+        redisUrl: process.env.REDIS_URL,
+      },
+    },
+    {
+      // Ojo: este módulo espera la URL ANIDADA en `redis.url`, no en
+      // `redisUrl` como los dos de arriba. Es así en el paquete, no es un
+      // despiste.
+      resolve: '@medusajs/medusa/workflow-engine-redis',
+      options: {
+        redis: {
+          url: process.env.REDIS_URL,
+        },
+      },
+    },
     {
       resolve: '@medusajs/medusa/payment',
       options: {
