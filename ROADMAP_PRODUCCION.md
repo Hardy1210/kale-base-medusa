@@ -7,8 +7,9 @@ Detalle de cada punto en [`CLIENT_SETUP.md`](./CLIENT_SETUP.md) (personalizació
 **Stack de destino:** VPS europeo + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
 + Stripe + Resend + Sentry.
 
-**Un VPS dedicado por cliente.** La app se compila en GitHub Actions, no en el servidor
-→ ver [Fase 4](#fase-4--código-listo-para-desplegar) y [Fase 5](#fase-5--infraestructura-un-vps-por-cliente).
+**Un VPS dedicado de 8 GB por cliente**, y Coolify compila la app en el propio servidor:
+sin CI, sin registros de imágenes, una pieza menos que mantener
+→ ver [Fase 5](#fase-5--infraestructura-un-vps-por-cliente).
 
 ---
 
@@ -159,24 +160,30 @@ error provocado a propósito en Resend que **llega a Sentry como alerta**.
 
 ## Fase 4 — Código listo para desplegar
 
-**Objetivo:** que el repo produzca imágenes Docker listas para arrancar en cualquier VPS.
+**Objetivo:** que el repo se pueda construir y arrancar en un servidor, sin sorpresas.
 
-> 🔁 **Los cuatro puntos de "preparación del starter" se hacen UNA SOLA VEZ**, en el
-> repo base. Cuando clones para un cliente nuevo ya vienen hechos y esta fase se reduce
-> a los dos últimos puntos. Es el trabajo que abarata todos los despliegues siguientes.
+> 🔁 **Los puntos de "preparación del starter" se hacen UNA SOLA VEZ**, en el repo base.
+> Cuando clones para un cliente nuevo ya vienen hechos y esta fase se reduce a los cuatro
+> últimos puntos.
 
-### La decisión que gobierna esta fase: dónde se compila la app
+### Cómo se despliega: Coolify compila en el propio VPS
 
-Compilar (`yarn build`) es lo que más memoria consume de todo el sistema — **mucho más
-que atender a los visitantes**:
+Es el camino por defecto, **elegido a conciencia**: haces `git push` y Coolify se
+encarga. Sin CI, sin registros de imágenes, sin tokens que caducan. Una pieza menos que
+mantener cuando llevas varias tiendas a la vez.
 
-- Atender la tienda con normalidad: **~2 GB** de RAM.
-- Compilarla: **+3 GB extra**, durante 15–25 minutos, en cada despliegue.
+El peaje es conocido y asumido:
 
-Si compilas en el VPS, pagas un servidor de 8 GB para usar 2 GB el 99,9 % del tiempo.
-**Compilando en GitHub Actions (gratis) el pico desaparece y basta un VPS de 4 GB**,
-además de bajar el deploy de 20 minutos a 2 y eliminar el riesgo de que el servidor
-muera a mitad de despliegue.
+- Compilar pide **~3 GB extra** de RAM durante 15–25 minutos → por eso el VPS mínimo de
+  la Fase 5 es de **8 GB**, no de 4.
+- Cada despliegue tarda esos 15–25 minutos, y durante ese rato el servidor va cargado.
+  Con el tráfico de un comercio pequeño, nadie lo nota.
+- **No hay rollback instantáneo**: revertir un despliegue malo es revertir el commit y
+  esperar otra compilación.
+
+A ~7 €/mes de diferencia por cliente, es cambiar dinero por simplicidad. Decisión
+correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, está la
+[opción avanzada](#opción-avanzada--compilar-en-github-actions) al final de la Fase 5.
 
 ### Preparación del starter (una vez)
 
@@ -184,14 +191,13 @@ muera a mitad de despliegue.
       Next empaqueta solo las librerías que usa de verdad, en vez de `node_modules`
       entero (555 MB en disco, casi todo herramientas de desarrollo que el servidor
       nunca ejecuta). La imagen baja de ~1,2 GB a ~200 MB.
+      Aunque compiles en el VPS **merece la pena igual**: menos disco y despliegues
+      más rápidos.
       ⚠️ Esto **no afecta a las fotos de producto** — viven en R2 y nunca entran en la
       imagen Docker. "Imagen" aquí es el paquete de la app, no un JPG.
 - [ ] **`storefront/Dockerfile`: multi-stage que aproveche standalone**
       (el de `PRODUCTION_DEPLOY.md` §1 copia `node_modules` entero — hay que rehacerlo)
-- [ ] **`medusa/Dockerfile`** (contenido listo en `PRODUCTION_DEPLOY.md` §1).
-      Este no cambia: lo mismo, pero lo ejecuta GitHub en vez del VPS
-- [ ] **Workflow de GitHub Actions** que construya las dos imágenes y las publique en
-      **GHCR** (el registro de GitHub, gratis para repos privados)
+- [ ] **`medusa/Dockerfile`** (contenido listo en `PRODUCTION_DEPLOY.md` §1, sirve tal cual)
 - [ ] **`medusa-config.js`: registrar `cache-redis` y `event-bus-redis`**
       Los paquetes ya están instalados y Redis ya está en el stack (hoy solo guarda
       sesiones). **Es fiabilidad, no rendimiento** — sin esto el bus de eventos vive en
@@ -206,8 +212,7 @@ muera a mitad de despliegue.
 - [ ] `yarn lint` en `storefront/` limpio (es lo que corre el CI)
 - [ ] Commit + push a la rama
 
-**🚪 Puerta:** el workflow de GitHub Actions termina en verde y **las dos imágenes
-aparecen publicadas en GHCR**. A partir de aquí el VPS ya no compila nada.
+**🚪 Puerta:** los dos builds pasan en limpio desde cero y el CI de GitHub está verde.
 
 ---
 
@@ -222,36 +227,44 @@ que ahorraría compartir.
 
 ### Qué tamaño de VPS
 
-Con la Fase 4 hecha (la app llega ya compilada desde GHCR), el servidor solo tiene que
-**ejecutar**, nunca construir. El consumo en reposo es de **~2 GB**, así que:
+El servidor hace dos cosas muy distintas: **atender la tienda** (~2 GB en reposo) y
+**compilar la app** en cada despliegue (**+3 GB durante 15–25 min**). Se dimensiona por
+el momento peor:
 
 | Cliente | VPS | ~€/mes |
 |---|---|---|
-| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **4 GB RAM · 2–4 vCPU · 40 GB** | **5–9 €** |
-| En crecimiento | 8 GB · 4 vCPU · 80 GB | 13–18 € |
+| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **8 GB RAM · 4 vCPU · 80 GB** | **13–18 €** |
 | Catálogo grande o mucho tráfico | 16 GB · 8 vCPU | ~25 € |
 
-⚠️ **Si por lo que sea NO hiciste la Fase 4** y el VPS compila la app, sube un escalón:
-el mínimo pasa a ser **8 GB**, porque compilar pide ~3 GB extra y con 4 GB el deploy
-muere por falta de memoria.
+⛔ **4 GB no vale.** Sobra para atender la tienda, pero el despliegue muere por falta de
+memoria a mitad de compilación. Solo baja a 4 GB si adoptas la
+[opción avanzada](#opción-avanzada--compilar-en-github-actions) del final de esta fase.
+
+✅ **Swap de 4 GB y los `mem_limit` por contenedor no son opcionales aquí**: con el VPS
+compilando, son lo que evita que un pico se lleve por delante a Postgres.
 
 ### Elección de proveedor
 
 Los medios van a Cloudflare R2, así que el disco del servidor casi no crece y el tráfico
 de salida es solo HTML/JSON. Cualquier cuota incluida sobra.
 
-| Proveedor | ~4 GB | ~€/mes | Nota |
+| Proveedor | Perfil 8 GB | ~€/mes | Nota |
 |---|---|---|---|
-| **Hetzner CAX (ARM)** | 2–4 vCPU / 4–8 GB | 4–7 | 🇩🇪 El mejor precio. **Pool de stock distinto al de CPX**: suele haber ARM disponible cuando el x86 está agotado. Todo el stack tiene imágenes arm64 |
-| **Hetzner CPX** | 2–4 vCPU / 4–8 GB | 8–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
+| **Hetzner CAX (ARM)** | 4 vCPU / 8 GB | ~7 | 🇩🇪 El mejor precio. **Pool de stock distinto al de CPX**: suele haber ARM disponible cuando el x86 está agotado. Todo el stack tiene imágenes arm64 |
 | **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Mejor relación precio/prestaciones tras Hetzner |
-| **OVHcloud** | 2–4 vCPU / 4–8 GB | 8–15 | 🇫🇷 **Argumento comercial con clientes franceses** ("hébergé en France") |
-| **Scaleway** | 2–4 vCPU / 4–8 GB | 10–25 | 🇫🇷 Más caro; en varias gamas el almacenamiento se factura aparte |
-| **Infomaniak** | 4–8 GB | 10–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
+| **Hetzner CPX** | 4 vCPU / 8 GB | 14–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
+| **OVHcloud** | 4 vCPU / 8 GB | 13–18 | 🇫🇷 **Argumento comercial con clientes franceses** ("hébergé en France") |
+| **Infomaniak** | 8 GB | 13–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
+| **Scaleway** | 2–4 vCPU / 8 GB | 18–25 | 🇫🇷 Más caro; en varias gamas el almacenamiento se factura aparte |
 | Contabo | 4 vCPU / 8 GB | 5–6 | ⚠️ El más barato, pero disco lento — mala idea con PostgreSQL |
 
 Hetzner Falkenstein está en Alemania = UE = plenamente conforme al RGPD. Solo hace falta
 un proveedor francés si el cliente lo pide expresamente. La gama CX ya no existe.
+
+💡 **Compilando en el VPS, ARM deja de tener pega.** Coolify compila directamente sobre
+la máquina, así que no hay cross-compilación de por medio (que es lo que sí complica el
+ARM cuando se usa CI). Eso deja **Hetzner CAX** como la mejor opción de la tabla: 8 GB
+por ~7 €. Comprueba el stock, que es su punto débil.
 
 ### Montaje
 
@@ -260,8 +273,8 @@ un proveedor francés si el cliente lo pide expresamente. La gama CX ya no exist
 - [ ] Cron semanal de `docker system prune -af` (si no, el disco se llena en unos meses)
 - [ ] Coolify: proyecto + **Postgres 16** + **Redis 7** como servicios gestionados
 - [ ] Cloudflare R2: bucket + CORS + API token **restringido a ese bucket**
-- [ ] Coolify: apps `medusa-backend` y `storefront` **apuntando a la imagen de GHCR**,
-      no al repositorio
+- [ ] Coolify: apps `medusa-backend` y `storefront` **desde el repo Git**, con su
+      Dockerfile (detalle en `PRODUCTION_DEPLOY.md` §2)
 - [ ] Variables de entorno en la UI de Coolify (listado completo en `PRODUCTION_DEPLOY.md` §3)
 - [ ] Dominio + DNS apuntando al VPS + **SSL emitido** (Let's Encrypt vía Coolify)
 - [ ] Deploy en orden: backend → migraciones → usuario admin → publishable key → storefront
@@ -281,8 +294,9 @@ un proveedor francés si el cliente lo pide expresamente. La gama CX ya no exist
       servidor el trabajo de redimensionar fotos, que es su mayor gasto de CPU
 
 **🚪 Puerta:** `https://api.dominio.com/health` responde OK, el admin carga en `/app` con
-SSL válido, y el storefront carga con SSL válido. Además: `docker stats` con todos los
-contenedores por debajo de su límite, y **un deploy completo en menos de 3 minutos**.
+SSL válido, y el storefront carga con SSL válido. Además: **un despliegue completo de las
+dos apps sin que muera por falta de memoria**, y `docker stats` con todos los contenedores
+por debajo de su límite una vez terminado.
 *(Nota: `/health` solo existe con `medusa start` — el comando de producción. En
 `medusa develop` no está.)*
 
@@ -290,15 +304,16 @@ contenedores por debajo de su límite, y **un deploy completo en menos de 3 minu
 
 Cifras para una tienda de moda con Cloudflare delante.
 
-| | VPS 4 GB | VPS 8 GB |
+| | VPS 8 GB | VPS 16 GB |
 |---|---|---|
-| Visitas al mes | hasta ~30.000 | hasta ~150.000 |
-| Pedidos al mes | hasta ~500 | hasta ~2.000 |
-| Productos en catálogo | hasta ~500 | hasta ~2.000 |
-| Visitantes a la vez (pico) | 20–40 | 100–200 |
+| Visitas al mes | hasta ~150.000 | hasta ~400.000 |
+| Pedidos al mes | hasta ~2.000 | hasta ~5.000 |
+| Productos en catálogo | hasta ~2.000 | 5.000+ |
+| Visitantes a la vez (pico) | 100–200 | 300–500 |
 
-**Un comercio pequeño francés está muy por debajo de estos límites.** El caso típico
-—10 a 50 pedidos al mes con 2.000–10.000 visitas— cabe en 4 GB con muchísimo margen.
+**Un comercio pequeño francés está a años luz de estos límites.** El caso típico —10 a 50
+pedidos al mes con 2.000–10.000 visitas— usa una fracción del VPS de 8 GB. Ese servidor
+está dimensionado por el despliegue, no por el tráfico.
 
 ⚠️ **Cuidado al estimar visitas a partir de ventas.** La conversión normal en e-commerce
 es del **1–3 %**, así que:
@@ -314,13 +329,29 @@ es presupuesto de marketing, no de servidor. Conviene aclararlo **antes** de fir
 emails/mes y el sistema manda 3 por venta (ver Fase 3): techo de **~1.000 pedidos/mes**.
 La cuota de correo se agota mucho antes que la RAM.
 
-### Plan B — desplegar sin GitHub Actions
+### Opción avanzada — compilar en GitHub Actions
 
-Si algún día despliegas desde GitLab, un repo privado sin CI o directamente a mano,
-Coolify puede compilar en el propio VPS (es lo que describe `PRODUCTION_DEPLOY.md` §2).
-Sigue funcionando, con dos peajes: **el VPS mínimo sube a 8 GB** y cada deploy tarda
-15–25 minutos con riesgo de morir por falta de memoria. Es la salida de emergencia, no
-el camino por defecto.
+**No hace falta hoy.** Se documenta por si más adelante los despliegues de 20 minutos
+estorban, con muchos clientes o mucha frecuencia de cambios.
+
+La idea: GitHub Actions compila las dos imágenes y las publica en **GHCR**; Coolify solo
+se las descarga y las arranca. El VPS deja de compilar.
+
+| | Compilando en el VPS (actual) | Compilando en Actions |
+|---|---|---|
+| VPS mínimo | 8 GB (13–18 €) | **4 GB (5–9 €)** |
+| Duración del despliegue | 15–25 min | **1–2 min** |
+| Rollback | revertir commit + recompilar | **redesplegar la imagen anterior** |
+| Piezas que mantener | ninguna | workflow, GHCR, tokens, **por cada repo de cliente** |
+| ARM (Hetzner CAX) | nativo, sin fricción | cross-compilación lenta o runners de pago |
+
+**Por qué no es el camino por defecto:** a ~7 €/mes de diferencia por cliente, el CI se
+convierte en una pieza más que mantener y depurar. Con comercios pequeños que despliegan
+una vez al mes, no compensa.
+
+**Se puede adoptar cliente a cliente, cuando quieras**, sin tocar nada más: el Dockerfile
+es exactamente el mismo, solo cambia quién lo ejecuta. Ojo a los ~2.000 minutos/mes
+gratuitos de Actions en repos privados, compartidos entre todos tus repos.
 
 ---
 
@@ -417,8 +448,9 @@ corre idéntico en local y en el servidor. Con Coolify **se necesita uno por app
 `output: "standalone"` (ver Fase 4): hoy copia `node_modules` entero y produce una imagen
 de ~1,2 GB en vez de ~200 MB. El de **Medusa** sirve tal cual.
 
-Quién ejecuta ese Dockerfile es una decisión aparte: **GitHub Actions** (recomendado,
-Fase 4) o el propio VPS (Plan B, Fase 5). El archivo es el mismo en ambos casos.
+Quién ejecuta ese Dockerfile es una decisión aparte: **el propio VPS vía Coolify** (lo
+que hacemos) o GitHub Actions (la opción avanzada del final de la Fase 5). El archivo es
+el mismo en los dos casos. El archivo es el mismo en ambos casos.
 
 ## Backlog / opcional (solo si el cliente lo pide)
 
