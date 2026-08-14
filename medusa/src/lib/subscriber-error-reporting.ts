@@ -26,7 +26,7 @@ import { captureException } from './sentry';
 export function withErrorReporting<T>(
   handler: (args: SubscriberArgs<T>) => Promise<void>,
 ) {
-  return async function subscriberWithErrorReporting(args: SubscriberArgs<T>) {
+  const wrapped = async function (args: SubscriberArgs<T>) {
     try {
       await handler(args);
     } catch (error) {
@@ -47,4 +47,12 @@ export function withErrorReporting<T>(
       throw error;
     }
   };
+
+  // Medusa deriva el id del subscriber del NOMBRE de la función exportada. Sin
+  // esta línea los seis subscribers se llamarían igual —el nombre de la función
+  // de dentro de este wrapper— y el servidor no arranca:
+  // "Subscriber with id ... already exists".
+  Object.defineProperty(wrapped, 'name', { value: handler.name });
+
+  return wrapped;
 }
