@@ -43,7 +43,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=9000
 
-RUN corepack enable
+# Aquí no se habilita corepack: la imagen final no instala nada ni usa yarn,
+# arranca el binario que ya trae node_modules.
 
 # `node` viene creado en la imagen oficial. Ejecutar como usuario sin
 # privilegios evita que un fallo en la app se traduzca en root dentro del
@@ -56,7 +57,13 @@ EXPOSE 9000
 
 # Sirve la API de tienda, la de admin y el panel en /app.
 #
+# Se llama al binario directamente en vez de a `yarn start`. Con yarn, corepack
+# intenta DESCARGARSE yarn 4.7.0 en cada arranque del contenedor —necesitaría
+# red para encender la tienda— y además da un falso "the project doesn't seem to
+# have been installed": la instalación se hizo en .medusa/server dentro del
+# builder y yarn no reconoce su propio estado tras copiarla a /app.
+#
 # Las migraciones NO se ejecutan aquí a propósito: son irreversibles y no deben
 # dispararse solas en cada reinicio o escalado. Se lanzan a mano una vez por
 # despliegue desde la terminal de Coolify (ver PRODUCTION_DEPLOY.md §7).
-CMD ["yarn", "start"]
+CMD ["./node_modules/.bin/medusa", "start"]
