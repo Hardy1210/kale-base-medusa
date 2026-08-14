@@ -2,6 +2,48 @@ const { loadEnv, defineConfig } = require('@medusajs/framework/utils');
 
 loadEnv(process.env.NODE_ENV, process.cwd());
 
+/**
+ * Devuelve un secreto de firma, y REVIENTA EL ARRANQUE si en producción no es
+ * seguro.
+ *
+ * Antes había un `|| 'supersecret'` aquí. El problema no era el valor por
+ * defecto: era que fallaba en silencio. Si la variable no llegaba al servidor
+ * —típico al montar Coolify— la tienda arrancaba con normalidad firmando con
+ * una cadena que está escrita en este mismo repo, en el .env.template y en
+ * todos los starters de Medusa de GitHub. Con eso cualquiera puede fabricarse
+ * un JWT de administrador.
+ *
+ * Mismo criterio que REDIS_URL más abajo: más vale un error ruidoso al
+ * desplegar que una tienda abierta que parece funcionar.
+ *
+ * En local y en los tests se mantiene el valor de desarrollo para no exigir
+ * configuración: `.env.test` está vacío a propósito y los tests de integración
+ * cargan este fichero.
+ */
+function resolveSigningSecret(name) {
+  const value = process.env[name];
+
+  if (process.env.NODE_ENV !== 'production') {
+    return value || 'dev-only-insecure-secret';
+  }
+
+  if (!value) {
+    throw new Error(
+      `${name} no está definida. En producción es obligatoria: genera una con "openssl rand -hex 32" y añádela a las variables de entorno del servidor.`,
+    );
+  }
+
+  // 32 hex = 64 caracteres. El mínimo de 32 deja pasar cualquier secreto
+  // generado en condiciones y corta los inventados a mano ("misecreto123").
+  if (value === 'supersecret' || value.length < 32) {
+    throw new Error(
+      `${name} usa un valor inseguro. En producción no puede ser "supersecret" ni tener menos de 32 caracteres: genera una con "openssl rand -hex 32".`,
+    );
+  }
+
+  return value;
+}
+
 module.exports = defineConfig({
   admin: {
     backendUrl:
@@ -15,8 +57,8 @@ module.exports = defineConfig({
       storeCors: process.env.STORE_CORS,
       adminCors: process.env.ADMIN_CORS,
       authCors: process.env.AUTH_CORS,
-      jwtSecret: process.env.JWT_SECRET || 'supersecret',
-      cookieSecret: process.env.COOKIE_SECRET || 'supersecret',
+      jwtSecret: resolveSigningSecret('JWT_SECRET'),
+      cookieSecret: resolveSigningSecret('COOKIE_SECRET'),
       jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
     },
   },
