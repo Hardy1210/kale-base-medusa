@@ -14369,6 +14369,7 @@ __metadata:
     react-dropzone: "npm:^14.3.8"
     react-email: "npm:3.0.7"
     resend: "npm:^4.1.2"
+    stripe: "npm:^15.5.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.8.2"
     vite: "npm:^5.4.14"
