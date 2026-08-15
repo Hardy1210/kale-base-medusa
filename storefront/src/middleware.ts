@@ -119,8 +119,14 @@ export async function middleware(request: NextRequest) {
   return response
 }
 
+// `sitemap.xml` va en la lista por el mismo motivo que `robots.txt`: son rutas
+// de raíz que los buscadores piden SIN prefijo de país. Sin excluirlas, el
+// middleware las redirige a `/fr/sitemap.xml`, que no existe, y Google recibe
+// un 404 — no puede indexar el catálogo aunque el sitemap se genere bien.
+//
+// Estaba `robots.txt` y faltaba `sitemap.xml`. Los dos o ninguno.
 export const config = {
   matcher: [
-    "/((?!api|_next/static|favicon.ico|_next/image|images|robots.txt).*)",
+    "/((?!api|_next/static|favicon.ico|_next/image|images|robots.txt|sitemap.xml).*)",
   ],
 }

@@ -21,7 +21,26 @@ const CartDrawer = dynamic(
 )
 
 export const Header: React.FC = async () => {
-  const regions = await listRegions()
+  // `listRegions` lanza si Medusa no responde (usa `medusaError`). El Header lo
+  // pinta TODO —incluida `/_not-found`, que se prerenderiza al compilar—, así
+  // que esa excepción tumbaba el build entero del storefront: un despliegue
+  // lanzado mientras el backend reiniciaba moría con
+  // "Export encountered an error on /_not-found/page".
+  //
+  // Con la lista vacía el selector de país no se pinta y el resto de la
+  // cabecera —marca, buscador, carrito, cuenta— funciona igual. Se degrada en
+  // vez de romperse, que es el mismo criterio que ya seguía `listCountryCodes`.
+  let regions: Awaited<ReturnType<typeof listRegions>> = []
+
+  try {
+    regions = (await listRegions()) ?? []
+  } catch (error) {
+    console.error(
+      `No se pudieron leer las regiones para la cabecera: ${
+        error instanceof Error ? error.message : "error desconocido"
+      }. El selector de país no se mostrará.`
+    )
+  }
 
   const countryOptions = regions
     .map((r) => {
