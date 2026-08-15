@@ -41,8 +41,11 @@ Estos archivos **ya leen el nombre de `brand.name`**. No los toques:
 Y estos **ya leen `STORE_NAME` del `.env`** a través de `medusa-config.js`, que inyecta
 `siteTitle` / `companyName` / `contactEmail` en **todas** las plantillas:
 
-- `medusa/src/modules/resend/emails/*.tsx` — las 7 plantillas
+- `medusa/src/modules/resend/emails/*.tsx` — las **6** plantillas activas
 - `medusa/src/modules/resend/emails/index.ts` — los asuntos
+
+> En esa carpeta hay 7 ficheros `.tsx`, pero solo 6 están registrados en `index.ts`:
+> `auth-email-confirm.tsx` no se usa. Si lo traduces, no cambia nada.
 
 > Las páginas de `auth` (login/register) solo dicen "Welcome back!", sin nombre de
 > tienda: no hay nada que reemplazar ahí.
@@ -60,8 +63,17 @@ las páginas legales, la home y el `about`, que todavía traen texto del starter
 | `NEXT_PUBLIC_BASE_URL` | `storefront/.env.local` | URL pública del storefront en producción |
 
 ### 4. GitHub Actions — secretos CI/CD
-En el repositorio GitHub → Settings → Secrets, verificar que estos secretos están configurados:
-`BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `STRIPE_KEY`, `REVALIDATE_SECRET`, `NEXT_PUBLIC_BASE_URL`
+En el repositorio GitHub → Settings → Secrets, configurar estos cinco. **Los nombres
+tienen que ser exactamente estos**, son los que lee `.github/workflows/node.js.yml`:
+
+- `NEXT_PUBLIC_MEDUSA_BACKEND_URL`
+- `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_STRIPE_KEY`
+- `NEXT_PUBLIC_BASE_URL`
+- `REVALIDATE_SECRET`
+
+> Antes aquí ponía `BACKEND_URL` y `STRIPE_KEY`. Eran incorrectos: con esos nombres el
+> workflow no encuentra los valores y el CI se queda en rojo sin motivo aparente.
 
 ### 5. Bucket S3 en producción
 En `storefront/next.config.js` hay un `TODO` para agregar el dominio S3 del cliente.
@@ -90,8 +102,10 @@ del JSON-LD de producto en `products/[handle]/page.tsx`.
 | `RESEND_API_KEY` | Clave de API de Resend para emails transaccionales (proveedor activo por defecto) |
 | `RESEND_FROM` | Dirección de envío, ej: `Tu Tienda <noreply@tutienda.com>` |
 | `EMAIL_REPLY_TO` | Dirección a la que responden los clientes, ej: `contact@tutienda.com`. Vacío = sin reply-to. Ver sección _Proveedor de email_ |
-| `JWT_SECRET` | Secret para firmar tokens JWT |
-| `COOKIE_SECRET` | Secret para firmar cookies de sesión |
+| `MERCHANT_NOTIFICATION_EMAIL` | **Buzón del comerciante.** Sin esto no se envía el aviso de venta — ver _Proveedor de email_ |
+| `JWT_SECRET` | Secret para firmar tokens JWT. En producción Medusa **no arranca** si falta, si vale `supersecret` o si tiene menos de 32 caracteres |
+| `COOKIE_SECRET` | Secret para firmar cookies de sesión. Mismas reglas que `JWT_SECRET` |
+| `REDIS_URL` | **Obligatoria.** Sostiene caché, bus de eventos y motor de workflows. Sin ella Medusa no arranca |
 
 > **Alternativa Brevo:** si en vez de Resend usas Brevo, configura `BREVO_API_KEY` y `BREVO_FROM` en lugar de las de Resend, y actívalo en `medusa-config.js` (ver sección _Proveedor de email_).
 
@@ -131,13 +145,30 @@ ninguna plantilla ni ningún subscriber.
 | Email | Evento | Destinatario |
 |---|---|---|
 | Confirmación de compra | `order.placed` | comprador (registrado o invitado) |
+| **Aviso de venta** | `order.placed` | **el comerciante** — requiere `MERCHANT_NOTIFICATION_EMAIL` |
 | Pedido en camino | `order.fulfillment_created` | comprador — se dispara al marcar el pedido como preparado/enviado en el admin |
 | Bienvenida | `customer.welcome` | cliente registrado |
 | Reset de contraseña | `auth.password_reset` | cliente |
 
-> No hay email de aviso al comerciante ni de reembolso: el comerciante se entera de
-> las ventas por el admin (y por los emails de pago de Stripe), y gestiona reembolsos
-> desde el admin de Medusa.
+Más una notificación en la **campanita del admin** por cada pedido, que funciona sin
+configurar nada.
+
+> ### ⚠️ `MERCHANT_NOTIFICATION_EMAIL` no es opcional
+>
+> **Sin esa variable el aviso de venta no se envía.** El subscriber existe, comprueba si
+> está definida y, si no lo está, se limita a escribir un `warn` en el log y no hace
+> nada más. La tienda funciona con normalidad y el cliente **no se entera de que ha
+> vendido** hasta que entra al admin por su cuenta.
+>
+> Ponla apuntando a un buzón que el cliente mire de verdad. Es la única señal automática
+> de que hay un pedido que preparar.
+
+> No hay emails de pedido cancelado ni reembolsado: esos casos se gestionan desde el
+> admin de Medusa.
+
+⚠️ **Stripe no manda ningún email al comprador.** Medusa nunca le pasa `receipt_email`,
+así que el comprador recibe **un solo email** por su compra: la confirmación de Medusa.
+No le prometas al cliente que Stripe envía un recibo.
 
 ### Reply-To (`contact@`)
 

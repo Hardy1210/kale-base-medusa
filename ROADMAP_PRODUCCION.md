@@ -229,7 +229,8 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
 
 ### Preparación del starter (una vez)
 
-- [ ] **`storefront/next.config.js`: activar `output: "standalone"`**
+- [x] ~~**`storefront/next.config.js`: activar `output: "standalone"`**~~ ✅ **HECHO en el
+      starter** (`next.config.js`, `output: "standalone"`).
       Next empaqueta solo las librerías que usa de verdad, en vez de `node_modules`
       entero (555 MB en disco, casi todo herramientas de desarrollo que el servidor
       nunca ejecuta). La imagen baja de ~1,2 GB a ~200 MB.
@@ -467,7 +468,16 @@ es opcional y ninguno es caro — lo caro es saltárselo.
       firma lanza excepción y rechaza todo. El riesgo es funcional, no de seguridad:
       Stripe no puede confirmar los cobros y los pedidos se quedan colgados sin pagar
 - [ ] `corepack yarn npm audit` en `medusa/` y `yarn audit` en `storefront/`:
-      cero vulnerabilidades críticas o altas
+      cero críticas o altas **en lo que se ejecuta en producción**.
+      No vale el número bruto del informe: el grueso son herramientas de desarrollo
+      (eslint, tailwind, webpack, playwright) que no entran en la imagen. Lo que hay
+      que mirar es lo que se ejecuta en el servidor o llega al navegador.
+      ⚠️ **En el backend esto NO se puede cumplir mientras se siga en Medusa 2.8.8.**
+      2.8.8 fija `@mikro-orm/* === 6.4.3` como peer dependency exacta —no un rango—, y
+      las inyecciones SQL de MikroORM solo están parcheadas a partir de 6.6.13. No hay
+      forma de subirlo sin subir Medusa. En 2.19 MikroORM sale de las peer deps y el
+      problema desaparece. Es un motivo de peso para planificar esa subida, no algo
+      que se arregle en esta fase.
 - [ ] `robots.txt` **sin `Disallow: /`** (si no, Google no indexa nada)
 
 ### Datos y RGPD 🇫🇷
@@ -573,17 +583,16 @@ backend → storefront de la Fase 5 sea obligatorio, no una recomendación.
 ## ¿Qué es un Dockerfile? (obligatorio para este stack)
 
 Es la "receta" que empaqueta la app (código + Node + dependencias) en un contenedor que
-corre idéntico en local y en el servidor. Con Coolify **se necesita uno por app**
-(`medusa/Dockerfile` y `storefront/Dockerfile`). El contenido ya está escrito en
-`PRODUCTION_DEPLOY.md` §1, listo para pegar. Es un archivo por app, se hace una vez.
+corre idéntico en local y en el servidor. Con Coolify **se necesita uno por app**.
 
-⚠️ El del **storefront** de §1 está pendiente de rehacer para aprovechar
-`output: "standalone"` (ver Fase 4): hoy copia `node_modules` entero y produce una imagen
-de ~1,2 GB en vez de ~200 MB. El de **Medusa** sirve tal cual.
+✅ **Los dos ya están en el repo** (`medusa/Dockerfile` y `storefront/Dockerfile`), con
+sus `.dockerignore`, y son iguales para todos los clientes: no hay que escribirlos ni
+copiarlos de ningún sitio. El del storefront ya aprovecha `output: "standalone"`
+(~200 MB, no ~1,2 GB).
 
 Quién ejecuta ese Dockerfile es una decisión aparte: **el propio VPS vía Coolify** (lo
 que hacemos) o GitHub Actions (la opción avanzada del final de la Fase 5). El archivo es
-el mismo en los dos casos. El archivo es el mismo en ambos casos.
+el mismo en los dos casos.
 
 ## Backlog / opcional (solo si el cliente lo pide)
 

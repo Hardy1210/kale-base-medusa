@@ -153,7 +153,7 @@ TEST_TYPE=integration:modules yarn test:integration:modules
 
 ## CI/CD
 
-GitHub Actions runs on PRs to `master` that touch `storefront/**`. It runs `yarn lint` against Node 20.x and 22.x. Required secrets: `BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `STRIPE_KEY`, `REVALIDATE_SECRET`.
+GitHub Actions runs on PRs to `master` that touch `storefront/**`. It runs `yarn lint` against Node 20.x and 22.x. Required secrets (exact names, as read by `.github/workflows/node.js.yml`): `NEXT_PUBLIC_MEDUSA_BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_KEY`, `NEXT_PUBLIC_BASE_URL`, `REVALIDATE_SECRET`.
 
 ## Code Style (Storefront)
 

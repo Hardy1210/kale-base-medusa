@@ -36,18 +36,47 @@ Dos cosas que conviene saber antes de configurar Coolify:
   tienda queda apuntando a `undefined`. La lista completa está en los `ARG` del
   `storefront/Dockerfile`.
 
-- [ ] **Desplegar el backend antes que el storefront.** El build del storefront
-  prerenderiza las fichas de producto llamando a la API: si Medusa todavía no responde,
-  compila igual pero esas páginas pierden el prerenderizado.
+- [ ] **Desplegar el backend antes que el storefront. No es una recomendación: sin
+  Medusa respondiendo, el build del storefront FALLA.** No se degrada — sale con error.
+  La página `/_not-found` renderiza el `Header`, el `Header` pide las regiones a la API,
+  y `generateStaticParams` se ejecuta al compilar. Next reintenta 3 veces y aborta:
 
-- [ ] En `storefront/next.config.js`, añadir el dominio R2 en `remotePatterns`:
+  ```
+  Error occurred prerendering page "/_not-found"
+  Export encountered an error on /_not-found/page, exiting the build.
+  ```
 
-```js
-{
-  protocol: "https",
-  hostname: "*.r2.cloudflarestorage.com",
-},
-```
+  Verificado ejecutándolo: con el backend caído, `yarn build` sale con código 1.
+  Consecuencia práctica en Coolify: **no redespliegues el storefront mientras Medusa
+  esté reiniciándose**, o el despliegue muere. Comprueba antes que
+  `https://api.tudominio.com/health` responde.
+
+- [ ] En `storefront/next.config.js`, añadir en `remotePatterns` **el hostname desde el
+  que se sirven las imágenes al navegador**, que no siempre es el de R2. Depende de lo
+  que hayas elegido en el paso 4:
+
+  **Con dominio propio (lo recomendado en §4):**
+
+  ```js
+  {
+    protocol: "https",
+    hostname: "media.tudominio.com",
+  },
+  ```
+
+  **Con la URL de R2 directa:**
+
+  ```js
+  {
+    protocol: "https",
+    hostname: "*.r2.cloudflarestorage.com",
+  },
+  ```
+
+  ⚠️ Es el error fácil: configurar el dominio propio en R2 y dejar aquí el patrón de
+  `*.r2.cloudflarestorage.com`. Next rechaza el hostname y **las fotos de producto no
+  cargan**, aunque estén perfectamente subidas. El valor de aquí tiene que coincidir con
+  el host de `S3_FILE_URL`.
 
 - [ ] Verificar que `storefront/next.config.js` **no tiene** `hostname: "localhost"` comentado sin el bloque de producción activo
 
@@ -68,7 +97,13 @@ Dos cosas que conviene saber antes de configurar Coolify:
   - Dockerfile: `medusa/Dockerfile`
   - Port: `9000`
   - Dominio: `https://api.tudominio.com`
-  - **Release Command:** `yarn medusa db:migrate`
+  - **Release Command:** `./node_modules/.bin/medusa db:migrate`
+
+  > ⚠️ **Se llama al binario por su ruta, no `yarn medusa db:migrate`.** La imagen de
+  > producción no habilita corepack a propósito (ver el comentario del `Dockerfile`), así
+  > que ahí `yarn` sería el yarn 1 global de la imagen y no el 4.7.0 del proyecto.
+  > Funciona de rebote, pero depende de un detalle de la imagen base que puede cambiar.
+  > La ruta directa no depende de nada.
 - [ ] Añadir aplicación **storefront**:
   - Source: repo Git, rama `master`
   - Subdirectory: `storefront`
@@ -183,7 +218,17 @@ NEXT_PUBLIC_SENTRY_DSN=                          ← proyecto del STOREFRONT, no
 - [ ] Copiar `sk_live_...` y `pk_live_...` a las env vars del paso 3
 - [ ] Crear webhook en Stripe → Developers → Webhooks:
   - URL: `https://api.tudominio.com/hooks/payment/stripe`
-  - Eventos: `payment_intent.succeeded`, `payment_intent.payment_failed`
+  - Eventos — los tres son necesarios:
+    - `payment_intent.succeeded` → el cobro se ha capturado
+    - `payment_intent.amount_capturable_updated` → **el pago queda autorizado**
+    - `payment_intent.payment_failed` → el cobro ha fallado
+
+  > El de en medio es el que se olvida. El proveedor de Stripe de Medusa lo traduce a
+  > `PaymentActions.AUTHORIZED` (verificado en `stripe-base.js`): sin él, los pagos
+  > autorizados pero aún no capturados no llegan nunca a Medusa y el pedido se queda
+  > colgado. El provider entiende además `canceled`, `created`, `partially_funded`,
+  > `processing` y `requires_action`; regístralos si activas 3DS con reintentos o métodos
+  > de pago diferidos.
 - [ ] Copiar `whsec_...` a `STRIPE_WEBHOOK_SECRET` en Coolify
 
 ---
@@ -203,13 +248,20 @@ Lanzar en este orden desde Coolify UI:
 
 - [ ] Deploy **PostgreSQL** → verificar que está `Running`
 - [ ] Deploy **Redis** → verificar que está `Running`
-- [ ] Deploy **medusa-backend** → verificar que el Release Command (`db:migrate`) corrió sin errores
-- [ ] Ejecutar una vez (SSH al VPS o terminal de Coolify):
+- [ ] Deploy **medusa-backend** → verificar que el Release Command
+  (`./node_modules/.bin/medusa db:migrate`, ver §2) corrió sin errores.
+  **Las migraciones se lanzan ahí y solo ahí**: el `CMD` del Dockerfile no las ejecuta a
+  propósito, porque son irreversibles y no deben dispararse en cada reinicio o escalado
+  del contenedor
+- [ ] Crear el usuario admin, una sola vez (terminal de Coolify o SSH al VPS):
 
 ```bash
 cd /app
-yarn medusa user -e "admin@tudominio.com" -p "password-seguro"
+./node_modules/.bin/medusa user -e "admin@tudominio.com" -p "password-seguro"
 ```
+
+  *(Ruta directa al binario por el mismo motivo que el Release Command: en la imagen de
+  producción `yarn` no es el del proyecto.)*
 
 - [ ] Ir a `https://api.tudominio.com/app/settings/publishable-api-keys`
   → copiar la clave publicable

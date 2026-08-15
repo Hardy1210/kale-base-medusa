@@ -64,6 +64,13 @@ EXPOSE 9000
 # builder y yarn no reconoce su propio estado tras copiarla a /app.
 #
 # Las migraciones NO se ejecutan aquí a propósito: son irreversibles y no deben
-# dispararse solas en cada reinicio o escalado. Se lanzan a mano una vez por
-# despliegue desde la terminal de Coolify (ver PRODUCTION_DEPLOY.md §7).
+# dispararse solas en cada reinicio o escalado del contenedor. Se lanzan una vez
+# por despliegue desde el Release Command de Coolify, que es un paso aparte del
+# arranque:
+#
+#   ./node_modules/.bin/medusa db:migrate
+#
+# Ruta directa al binario, no `yarn medusa db:migrate`: aquí arriba no se
+# habilita corepack, así que `yarn` sería el yarn 1 global de la imagen base y
+# no el 4.7.0 del proyecto. Detalle en PRODUCTION_DEPLOY.md §2.
 CMD ["./node_modules/.bin/medusa", "start"]
