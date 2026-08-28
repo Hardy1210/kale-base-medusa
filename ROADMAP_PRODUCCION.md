@@ -256,6 +256,13 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
       volumen es más grave, no menos: perder 1 pedido de 20 es el 5 % del mes.
       ⚠️ **`REDIS_URL` pasa a ser obligatoria**: sin ella Medusa ya no arranca. Es
       deliberado — mejor un error ruidoso que una caída silenciosa a memoria volátil
+- [ ] **`storefront/package.json`: mover `axios` de `dependencies` a `devDependencies`.**
+      Solo lo usa `e2e/data/seed.ts` (helper de los tests de Playwright) — nada en `src/`
+      lo importa, así que nunca entra en el bundle ni en la imagen Docker. Estando en
+      `dependencies`, cada `yarn audit` saca 1 vulnerabilidad **crítica** falsa
+      (`axios > form-data`, boundary inseguro) que no afecta a producción pero ensucia el
+      informe. Arréglalo antes de la comprobación de la Fase 6 (`yarn audit` en cero) para
+      no tener que justificar un falso positivo cada vez que se audite un cliente nuevo.
 
 ### Por cada cliente
 
@@ -478,6 +485,10 @@ es opcional y ninguno es caro — lo caro es saltárselo.
       forma de subirlo sin subir Medusa. En 2.19 MikroORM sale de las peer deps y el
       problema desaparece. Es un motivo de peso para planificar esa subida, no algo
       que se arregle en esta fase.
+      ⚠️ **En el storefront**, si todavía no se ha hecho el punto de `axios` en
+      "Preparación del starter (una vez)" (Fase 4), `yarn audit` sacará 1 crítico falso
+      (`axios > form-data`) que no afecta a producción — es dependencia de un script de
+      test, no del bundle. Arréglalo ahí antes de dar esta puerta por buena.
 - [ ] `robots.txt` **sin `Disallow: /`** (si no, Google no indexa nada)
 
 ### Datos y RGPD 🇫🇷
