@@ -134,7 +134,13 @@ This override is machine-local only — it never ships to clients or production 
 The Medusa dev server itself defaults to host port **9000** (`yarn dev` serves both the store API and the admin at `/app`). If 9000 is taken by another local project, set `PORT` in `medusa/.env` (e.g. `PORT=9002`), point `BACKEND_URL` at it, and match `NEXT_PUBLIC_MEDUSA_BACKEND_URL` in `storefront/.env.local`. Both `.env` files are git-ignored, so this stays local.
 
 ## Medusa Config Highlights (`medusa/medusa-config.js`)
-- **Payment:** Stripe
+- **Payment:** Stripe — solo tarjeta. El checkout usa la API antigua de Stripe
+  (`<CardElement>` + `createToken` + `confirmCardPayment`), no `<PaymentElement>`.
+  Consecuencia: **Google Pay / Apple Pay no funcionan** aunque se activen en el dashboard
+  de Stripe, y tampoco SEPA, Klarna ni iDEAL. Hay un plan de integración detallado
+  (enfoque, ficheros a tocar y estimación) en el **Backlog** de
+  [`ROADMAP_PRODUCCION.md`](./ROADMAP_PRODUCCION.md). **Pendiente: no empezar hasta que el
+  usuario lo pida explícitamente.**
 - **File Storage:** S3 (MinIO locally)
 - **Email:** Resend provider (custom module)
 - **Custom module:** `./src/modules/fashion` registered as `fashionModuleService`

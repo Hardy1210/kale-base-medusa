@@ -607,6 +607,47 @@ el mismo en los dos casos.
 
 ## Backlog / opcional (solo si el cliente lo pide)
 
+- [ ] **Google Pay / Apple Pay en el checkout** — **DECIDIDO: Opción A.** Pendiente de
+  arrancar; empezar solo cuando el usuario lo pida.
+
+  **El problema:** en el dashboard de Stripe es un toggle, pero **en este código no**. El
+  checkout usa la API antigua de tarjeta (`<CardElement>` + `stripe.createToken` +
+  `confirmCardPayment`) y los wallets solo funcionan con `<PaymentElement>` o
+  `<ExpressCheckoutElement>`. Activarlo en Stripe sin tocar el código no hace aparecer
+  ningún botón.
+
+  **Opción A (la elegida) — botón express:** dejar el flujo de tarjeta intacto y añadir un
+  `<ExpressCheckoutElement>` encima del paso 4 de pago. `StripeWrapper` ya monta
+  `<Elements>` con `clientSecret`, que es justo lo que necesita.
+  Ficheros: `storefront/src/modules/checkout/components/payment/index.tsx` (montar el
+  elemento), `payment-card-button/index.tsx` y `payment-button/index.tsx` (saltarse el
+  gating de `cardComplete` y de `payment_method_id`, que asumen tarjeta), reusando
+  `usePlaceOrder()`.
+  **Se commitea en la base**, no en el repo del cliente: lo heredan todos los clones.
+
+  **Estimación (primera vez, en la base):** ~9-12 h — código 4-5 h, verificación de
+  dominio 0,5 h, pruebas en dispositivo real 3-4 h, margen de incidencias 1-3 h.
+  Con asistencia de Claude baja a ~6-7 h: el código se encoge, las pruebas no.
+  **Facturar 9-12 h**, no 6: el riesgo de que Apple Pay dé guerra lo asume el dev.
+
+  **Coste por cliente, una vez hecho en la base: ~1-1,5 h.** Toggle en su dashboard de
+  Stripe (5 min) + verificar su dominio para Apple Pay (20 min) + compra real de prueba en
+  iPhone y Chrome (30-45 min). Esa hora no se puede bajar: depende de la cuenta de Stripe
+  y del dominio de cada cliente, no del código.
+
+  **Requisito bloqueante para Apple Pay:** dominio verificado sobre HTTPS (fichero en
+  `/.well-known/`, Stripe lo automatiza). **No se puede probar en localhost** — no empezar
+  hasta tener el staging de la Fase 5 desplegado. Google Pay sí se prueba en Chrome sin
+  nada extra.
+
+  **Opción B (descartada por ahora) — migrar entero a `<PaymentElement>`:** 2-3 días.
+  Elimina las rutas custom `medusa/src/api/store/custom/stripe/*` y habilita SEPA, Klarna,
+  Bancontact, iDEAL, Link y el enrutado Cartes Bancaires con un toggle cada uno.
+  **No reduce la hora por cliente de los wallets** — lo que da es que activar SEPA o Klarna
+  pase de un día de desarrollo a 5 minutos de toggle.
+  **Cuándo hacerla:** cuando un cliente pida SEPA, Klarna o iDEAL. Esas horas son inversión
+  en la base, no se le facturan al cliente que solo pidió wallets.
+
 - [ ] **Gestión de contenido editorial (páginas About / Inspiration)** — que el cliente
   edite él mismo esos textos/imágenes desde el admin. Hoy están hardcodeados en
   `storefront/src/app/[countryCode]/(main)/about/page.tsx` e `inspiration/page.tsx`
