@@ -365,7 +365,8 @@ factura desde el primer mes.
       Dockerfile (detalle en `PRODUCTION_DEPLOY.md` §2)
 - [ ] Variables de entorno en la UI de Coolify (listado completo en `PRODUCTION_DEPLOY.md` §3)
 - [ ] Dominio + DNS apuntando al VPS + **SSL emitido** (Let's Encrypt vía Coolify)
-- [ ] Deploy en orden: backend → migraciones → usuario admin → publishable key → storefront
+- [ ] Primer despliegue en orden: backend (migraciones) → `seed-config` → usuario admin →
+      publishable key en el storefront → rebuild del storefront (`PRODUCTION_DEPLOY.md` §7)
 - [ ] **Verificar dominio en Resend**: registros **SPF, DKIM y DMARC** en DNS.
       Sin esto los emails van a spam o se rechazan.
 

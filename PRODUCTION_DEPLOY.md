@@ -210,7 +210,7 @@ SENTRY_DSN=
 
 ```env
 NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://api.tudominio.com
-NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_...        ← del paso 6
+NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_...        ← §7, paso 4 (sale de seed-config)
 NEXT_PUBLIC_BASE_URL=https://tienda.tudominio.com
 NEXT_PUBLIC_DEFAULT_REGION=fr
 NEXT_PUBLIC_STRIPE_KEY=pk_live_...               ← obligatorio, el build falla sin esto
@@ -281,30 +281,56 @@ NEXT_PUBLIC_SENTRY_DSN=                          ← proyecto del STOREFRONT, no
 
 ## 7. Primer deploy
 
-Lanzar en este orden desde Coolify UI:
+**El orden no es negociable:** migraciones → seed-config → usuario admin → publishable key
+en el storefront → rebuild del storefront. Cada paso necesita el anterior: sin tablas no
+hay seed, sin seed no hay región ni envíos, y sin publishable key el storefront no
+compila.
 
-- [ ] Deploy **PostgreSQL** → verificar que está `Running`
-- [ ] Deploy **Redis** → verificar que está `Running`
-- [ ] Deploy **medusa-backend** → verificar en el log del despliegue que el
-  Post-deployment Command (`./node_modules/.bin/medusa db:migrate`, ver §2) corrió sin
-  errores en el contenedor nuevo.
-  **Las migraciones se lanzan ahí y solo ahí**: el `CMD` del Dockerfile no las ejecuta a
-  propósito, porque son irreversibles y no deben dispararse en cada reinicio o escalado
-  del contenedor
-- [ ] Crear el usuario admin, una sola vez (terminal de Coolify o SSH al VPS):
+Antes: PostgreSQL y Redis desplegados y en `Running`.
 
-```bash
-cd /app
-./node_modules/.bin/medusa user -e "admin@tudominio.com" -p "password-seguro"
-```
+1. - [ ] **Migraciones** — Deploy de **medusa-backend**. Verificar en el log del
+   despliegue que el Post-deployment Command (`./node_modules/.bin/medusa db:migrate`,
+   ver §2) corrió sin errores en el contenedor nuevo.
+   **Las migraciones se lanzan ahí y solo ahí**: el `CMD` del Dockerfile no las ejecuta a
+   propósito, porque son irreversibles y no deben dispararse en cada reinicio o escalado
+   del contenedor.
 
-  *(Ruta directa al binario por el mismo motivo que el Post-deployment Command: en la imagen de
-  producción `yarn` no es el del proyecto.)*
+2. - [ ] **seed-config**, una vez, desde la terminal del contenedor del backend en Coolify
+   (o SSH al servidor + `docker exec`):
 
-- [ ] Ir a `https://api.tudominio.com/app/settings/publishable-api-keys`
-  → copiar la clave publicable
-  → pegarla en `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` en Coolify (storefront)
-- [ ] Deploy **storefront** → verificar que el build termina sin errores
+   ```bash
+   cd /app
+   ./node_modules/.bin/medusa exec ./src/scripts/seed-config.js
+   ```
+
+   Crea región, países, moneda, canal de venta, almacén, envíos, regiones fiscales y la
+   publishable key. Los valores salen de las constantes al principio de
+   `medusa/src/scripts/seed-config.ts`: **ajústalas para el cliente y haz commit ANTES
+   del despliegue**, porque en la imagen va la versión compilada. Es idempotente:
+   relanzarlo no duplica nada, y lo que ya existe no lo modifica.
+   *(`.js` y no `.ts`: en la imagen solo está el código compilado.)*
+   ⛔ **Nunca `seed-demo.js` en producción**: carga los sofás de demo.
+
+3. - [ ] **Usuario admin**, una sola vez, en el mismo contenedor:
+
+   ```bash
+   cd /app
+   ./node_modules/.bin/medusa user -e "admin@tudominio.com" -p "password-seguro"
+   ```
+
+   *(Ruta directa al binario por el mismo motivo que el Post-deployment Command: en la
+   imagen de producción `yarn` no es el del proyecto.)*
+
+4. - [ ] **Publishable key en el storefront** — copiar la clave de la última línea de la
+   salida de seed-config (`NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_...`) o de
+   `https://api.tudominio.com/app/settings/publishable-api-keys`, y pegarla en
+   `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` del storefront en Coolify, **marcada como variable
+   de build**.
+
+5. - [ ] **Rebuild del storefront** — Deploy (o Redeploy) de **storefront** y verificar que
+   el build termina sin errores. Tiene que ser una **compilación nueva**, no un reinicio:
+   la key se incrusta al compilar. Si el storefront se desplegó antes que todo esto, esa
+   compilación falló o quedó sin key; esta es la que vale.
 
 ---
 
