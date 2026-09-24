@@ -225,7 +225,12 @@ NEXT_PUBLIC_SENTRY_DSN=                          ← proyecto del STOREFRONT, no
 - [ ] En Stripe Dashboard, cambiar de modo Test a **Live**
 - [ ] Copiar `sk_live_...` y `pk_live_...` a las env vars del paso 3
 - [ ] Crear webhook en Stripe → Developers → Webhooks:
-  - URL: `https://api.tudominio.com/hooks/payment/stripe`
+  - URL: `https://api.tudominio.com/hooks/payment/stripe_stripe`
+
+    > **`stripe_stripe`, no `stripe`.** Medusa busca el proveedor `pp_<lo que va en la
+    > URL>`, y el registrado es `pp_stripe_stripe` (identificador `stripe` del paquete +
+    > `id: 'stripe'` en `medusa-config.js`). Con `/hooks/payment/stripe` Stripe recibe un
+    > 200, pero Medusa no encuentra el proveedor y el pago nunca se confirma.
   - Eventos — los tres son necesarios:
     - `payment_intent.succeeded` → el cobro se ha capturado
     - `payment_intent.amount_capturable_updated` → **el pago queda autorizado**

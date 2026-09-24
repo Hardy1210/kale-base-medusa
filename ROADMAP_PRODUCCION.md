@@ -509,7 +509,7 @@ restauración de backup ejecutada de verdad.
 
 **Objetivo:** abrir, con Stripe cobrando de verdad.
 
-- [ ] Stripe en **modo live**: claves live + webhook a `/hooks/payment/stripe`
+- [ ] Stripe en **modo live**: claves live + webhook a `/hooks/payment/stripe_stripe`
 - [ ] **Compra real** con tarjeta propia (importe pequeño) → el pago aparece en Stripe live
 - [ ] Llegan: confirmación al comprador **y** aviso al comerciante
 - [ ] Marcar el pedido como fulfilled → llega el email "va en camino"
