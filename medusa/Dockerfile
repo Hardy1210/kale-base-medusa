@@ -22,6 +22,15 @@ RUN yarn install --immutable
 
 COPY . .
 
+# El panel admin es JavaScript que se descarga el navegador, y `medusa build`
+# le incrusta la URL del backend AL COMPILAR (admin.backendUrl en
+# medusa-config.js). Si aquí no llega, se incrusta el valor por defecto
+# http://localhost:9000 y el admin de producción intenta hablar con el
+# navegador del propio comerciante. Pasarla solo en runtime no lo arregla.
+# En Coolify hay que marcar BACKEND_URL también como variable de build.
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
+
 # `medusa build` deja en .medusa/server una aplicación autónoma: su propio
 # package.json, el código compilado y el admin ya construido en public/.
 RUN yarn build

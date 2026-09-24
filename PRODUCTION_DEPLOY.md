@@ -36,6 +36,12 @@ Dos cosas que conviene saber antes de configurar Coolify:
   tienda queda apuntando a `undefined`. La lista completa está en los `ARG` del
   `storefront/Dockerfile`.
 
+- [ ] **En Coolify, marcar `BACKEND_URL` como variable de build del backend**, además de
+  runtime. Mismo motivo que las `NEXT_PUBLIC_*`: `medusa build` incrusta esa URL en el
+  panel admin al compilar (`ARG BACKEND_URL` en `medusa/Dockerfile`). Si solo llega en
+  runtime, el admin se compila con el valor por defecto `http://localhost:9000` y en
+  producción no carga datos.
+
 - [ ] **Desplegar el backend antes que el storefront. No es una recomendación: sin
   Medusa respondiendo, el build del storefront FALLA.** No se degrada — sale con error.
   La página `/_not-found` renderiza el `Header`, el `Header` pide las regiones a la API,
@@ -129,6 +135,8 @@ DATABASE_URL=postgresql://...
 REDIS_URL=redis://...
 
 # Dominio
+# ⚠️ BACKEND_URL se marca también como variable de BUILD: se incrusta en el admin
+# al compilar (ver §1)
 BACKEND_URL=https://api.tudominio.com
 STOREFRONT_URL=https://tienda.tudominio.com
 
