@@ -4,9 +4,13 @@
 name: PR test
 
 on:
-  pull_request_target:
-    types: [assigned, opened, synchronize, reopened]
-    branches: [master]
+  # pull_request y no pull_request_target: _target ejecuta el workflow con los
+  # secretos del repo sobre el código de la PR, que puede venir de un fork.
+  pull_request:
+    types: [opened, synchronize, reopened]
+    # master: rama por defecto de la base · medusa-2.19: rama de trabajo de la
+    # base · main: rama de producción de los proyectos de cliente.
+    branches: [master, main, medusa-2.19]
     paths: ['storefront/**']
 
 jobs:

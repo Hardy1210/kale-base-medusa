@@ -273,7 +273,8 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
 - [ ] `storefront/next.config.js` — añadir el dominio de R2 del cliente en `remotePatterns`
 - [ ] `corepack yarn build` en `medusa/` y `yarn build` en `storefront/`: **ambos sin errores**
 - [ ] `yarn lint` en `storefront/` limpio (es lo que corre el CI)
-- [ ] Commit + push a la rama
+- [ ] Commit + push a `main` (rama de producción del proyecto del cliente; en la base se
+      trabaja en `medusa-2.19`)
 
 **🚪 Puerta:** los dos builds pasan en limpio desde cero y el CI de GitHub está verde.
 

@@ -161,7 +161,9 @@ TEST_TYPE=integration:modules yarn test:integration:modules
 
 ## CI/CD
 
-GitHub Actions runs on PRs to `master` that touch `storefront/**`. It runs `yarn lint` against Node 20.x and 22.x. Required secrets (exact names, as read by `.github/workflows/node.js.yml`): `NEXT_PUBLIC_MEDUSA_BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_KEY`, `NEXT_PUBLIC_BASE_URL`, `REVALIDATE_SECRET`.
+**Branches:** in this base repo the working branch is `medusa-2.19` (`master` is the legacy default branch). In client projects the production branch is `main`, which is what Coolify deploys.
+
+GitHub Actions runs on PRs (`pull_request`, not `pull_request_target`) to `master`, `main` or `medusa-2.19` that touch `storefront/**`. It runs `yarn lint` against Node 20.x and 22.x. Required secrets (exact names, as read by `.github/workflows/node.js.yml`): `NEXT_PUBLIC_MEDUSA_BACKEND_URL`, `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY`, `NEXT_PUBLIC_STRIPE_KEY`, `NEXT_PUBLIC_BASE_URL`, `REVALIDATE_SECRET`.
 
 ## Code Style (Storefront)
 

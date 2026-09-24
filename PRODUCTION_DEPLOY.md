@@ -86,7 +86,13 @@ Dos cosas que conviene saber antes de configurar Coolify:
 
 - [ ] Verificar que `storefront/next.config.js` **no tiene** `hostname: "localhost"` comentado sin el bloque de producción activo
 
-- [ ] Commit y push a `master`
+- [ ] Commit y push a `main`
+
+> **Ramas.** En los proyectos de cliente la rama de producción es **`main`**: es la que
+> despliega Coolify. En el repo base (`kale-base-medusa`) la rama de trabajo es
+> **`medusa-2.19`** y `master` es solo la rama por defecto heredada; ninguna de las dos se
+> despliega. El CI (lint del storefront) corre en las PR hacia `master`, `main` y
+> `medusa-2.19`.
 
 ---
 
@@ -98,7 +104,7 @@ Dos cosas que conviene saber antes de configurar Coolify:
 - [ ] Añadir servicio **PostgreSQL 16** (built-in) → guardar la `DATABASE_URL` generada
 - [ ] Añadir servicio **Redis 7** (built-in) → guardar la `REDIS_URL` generada
 - [ ] Añadir aplicación **medusa-backend**:
-  - Source: repo Git, rama `master`
+  - Source: repo Git del cliente, rama `main`
   - Subdirectory: `medusa`
   - Dockerfile: `medusa/Dockerfile`
   - Port: `9000`
@@ -111,7 +117,7 @@ Dos cosas que conviene saber antes de configurar Coolify:
   > Funciona de rebote, pero depende de un detalle de la imagen base que puede cambiar.
   > La ruta directa no depende de nada.
 - [ ] Añadir aplicación **storefront**:
-  - Source: repo Git, rama `master`
+  - Source: repo Git del cliente, rama `main`
   - Subdirectory: `storefront`
   - Dockerfile: `storefront/Dockerfile`
   - Port: `8000`
