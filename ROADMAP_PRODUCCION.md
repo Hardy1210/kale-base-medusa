@@ -4,12 +4,13 @@ Ruta de construcción para llevar este starter a producción **para un cliente n
 Detalle de cada punto en [`CLIENT_SETUP.md`](./CLIENT_SETUP.md) (personalización) y
 [`PRODUCTION_DEPLOY.md`](./PRODUCTION_DEPLOY.md) (deploy).
 
-**Stack de destino:** VPS europeo + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
+**Stack de destino:** servidor europeo + Coolify + Postgres 16 + Redis 7 + Cloudflare R2
 + Stripe + Resend + Sentry + Better Stack.
 
-**Un VPS dedicado de 8 GB por cliente**, y Coolify compila la app en el propio servidor:
-sin CI, sin registros de imágenes, una pieza menos que mantener
-→ ver [Fase 5](#fase-5--infraestructura-un-vps-por-cliente).
+**Un servidor de 16 GB compartido por 2–3 clientes pequeños**, un proyecto de Coolify por
+cliente, y Coolify compila la app en el propio servidor: sin CI, sin registros de
+imágenes, una pieza menos que mantener. El cliente que crece pasa a un VPS dedicado
+→ ver [Fase 5](#fase-5--infraestructura-servidor-compartido).
 
 ---
 
@@ -214,7 +215,7 @@ se queda mudo.
 > Cuando clones para un cliente nuevo ya vienen hechos y esta fase se reduce a los cuatro
 > últimos puntos.
 
-### Cómo se despliega: Coolify compila en el propio VPS
+### Cómo se despliega: Coolify compila en el propio servidor
 
 Es el camino por defecto, **elegido a conciencia**: haces `git push` y Coolify se
 encarga. Sin CI, sin registros de imágenes, sin tokens que caducan. Una pieza menos que
@@ -222,15 +223,17 @@ mantener cuando llevas varias tiendas a la vez.
 
 El peaje es conocido y asumido:
 
-- Compilar pide **~3 GB extra** de RAM durante 15–25 minutos → por eso el VPS mínimo de
-  la Fase 5 es de **8 GB**, no de 4.
-- Cada despliegue tarda esos 15–25 minutos, y durante ese rato el servidor va cargado.
-  Con el tráfico de un comercio pequeño, nadie lo nota.
+- Compilar pide **~3–4 GB extra** de RAM durante 15–25 minutos. En el servidor
+  compartido de la Fase 5 se reserva ese hueco **una sola vez**, con las compilaciones
+  limitadas a una a la vez.
+- Cada despliegue tarda esos 15–25 minutos (más la espera si otro cliente está
+  compilando), y durante ese rato el servidor va cargado. Con el tráfico de comercios
+  pequeños, nadie lo nota.
 - **No hay rollback instantáneo**: revertir un despliegue malo es revertir el commit y
   esperar otra compilación.
 
-A ~7 €/mes de diferencia por cliente, es cambiar dinero por simplicidad. Decisión
-correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, está la
+Es cambiar algo de RAM del servidor compartido por simplicidad. Decisión correcta a esta
+escala. Si algún día los despliegues de 20 minutos molestan, está la
 [opción avanzada](#opción-avanzada--compilar-en-github-actions) al final de la Fase 5.
 
 ### Preparación del starter (una vez)
@@ -284,125 +287,193 @@ correcta a esta escala. Si algún día los despliegues de 20 minutos molestan, e
 
 ---
 
-## Fase 5 — Infraestructura (un VPS por cliente)
+## Fase 5 — Infraestructura (servidor compartido)
 
 **Objetivo:** levantar el entorno. Primer gasto real.
 
-**Un VPS dedicado por cliente**, siempre. Nada de servidores compartidos entre clientes:
-el aislamiento de datos (RGPD), las claves de Stripe, los backups y la posibilidad de
-migrar o entregar un cliente sin tocar a los demás valen mucho más que los pocos euros
-que ahorraría compartir.
+**Modelo por defecto: un servidor de 16 GB compartido por 2–3 clientes pequeños**
+(Hetzner u OVH), con Coolify compilando en el propio servidor. Cada cliente vive en su
+**propio proyecto de Coolify**, con su Postgres, su Redis y sus variables: no comparten
+base de datos, ni credenciales, ni claves de Stripe.
 
-### Qué tamaño de VPS
+Por qué compartir y no un VPS por cliente: un comercio pequeño usa una fracción mínima de
+un servidor. Lo que dimensionaba el VPS de 8 GB era la **compilación** (+3 GB durante
+15–25 min), no la tienda. Con las compilaciones en cola de una en una, ese pico se paga
+**una vez por servidor** y no una vez por cliente.
 
-El servidor hace dos cosas muy distintas: **atender la tienda** (~2 GB en reposo) y
-**compilar la app** en cada despliegue (**+3 GB durante 15–25 min**). Se dimensiona por
-el momento peor:
+El VPS dedicado no desaparece: es adonde se muda un cliente cuando crece o cuando pide
+aislamiento (criterios más abajo). Como cada cliente es un proyecto de Coolify
+independiente con sus backups fuera del servidor, mudarlo es restaurar en otra máquina y
+cambiar el DNS.
 
-| Cliente | VPS | ~€/mes |
+### Presupuesto de memoria (16 GB, 3 clientes)
+
+| Pieza | Por cliente | × 3 clientes |
 |---|---|---|
-| **Micro — hasta ~500 pedidos/mes** (el caso normal) | **8 GB RAM · 4 vCPU · 75–80 GB** | **~9–15 €** |
-| Catálogo grande o mucho tráfico | 16 GB · 8 vCPU | ~25 € |
+| Backend Medusa | `1G` | 3 GB |
+| Storefront Next | `768M` | 2,25 GB |
+| Postgres | `512M` | 1,5 GB |
+| Redis | `128M` | 0,4 GB |
+| **Subtotal tiendas** | **~2,4 GB** | **~7,2 GB** |
+| Coolify (panel, su Postgres/Redis, proxy) | — | ~1,5 GB |
+| **Una** compilación en curso | — | ~3–4 GB |
+| Margen para el sistema y la caché de disco | — | ~3,5 GB |
 
-⛔ **4 GB no vale.** Sobra para atender la tienda, pero el despliegue muere por falta de
-memoria a mitad de compilación. Solo baja a 4 GB si adoptas la
-[opción avanzada](#opción-avanzada--compilar-en-github-actions) del final de esta fase.
+Con 3 clientes el servidor queda en torno al 75 % en el peor momento (una compilación en
+marcha). **Un cuarto cliente no cabe** sin quitar margen: o nuevo servidor, o mudar al
+que más consume a un VPS dedicado.
 
-✅ **Swap de 4 GB y los `mem_limit` por contenedor no son opcionales aquí**: con el VPS
-compilando, son lo que evita que un pico se lleve por delante a Postgres.
+⛔ **Esto solo cuadra con las compilaciones limitadas a 1.** Dos compilaciones a la vez
+son +6–8 GB y el servidor empieza a matar procesos, empezando a menudo por un Postgres.
 
 ### Elección de proveedor
 
 Los medios van a Cloudflare R2, así que el disco del servidor casi no crece y el tráfico
 de salida es solo HTML/JSON. Cualquier cuota incluida sobra.
 
-| Proveedor | Perfil 8 GB | ~€/mes | Nota |
-|---|---|---|---|
-| ⭐ **OVHcloud VPS-2** | **4 vCore / 8 GB / 75 GB NVMe** | **~8,65** | 🇫🇷 **La opción por defecto.** Tráfico ilimitado a 1 Gbit/s y **backup automático de 1 día incluido**. Datacenters en Francia: argumento comercial directo con el cliente |
-| **Hetzner CAX (ARM)** | 4 vCPU / 8 GB | ~7 | 🇩🇪 Algo más barato, pero **el stock es su punto débil** — suele estar agotado. Todo el stack tiene imágenes arm64 |
-| **Netcup** | 4 vCPU / 8 GB | 7–9 | 🇩🇪🇦🇹 Alternativa sólida si OVH y Hetzner fallan |
-| **Infomaniak** | 8 GB | 13–18 | 🇨🇭 Discurso RGPD y ecológico, muy vendible en Francia |
-| **Hetzner CPX** | 4 vCPU / 8 GB | 14–35 | 🇩🇪 Verifica ubicación y línea: los datacenters de EE. UU. y la gama **CCX** (vCPU dedicado) cuestan bastante más |
-| **Scaleway** | 2–4 vCPU / 8 GB | 18–25 | 🇫🇷 Más caro; en varias gamas el almacenamiento se factura aparte |
-| Contabo | 4 vCPU / 8 GB | 5–6 | ⚠️ El más barato, pero disco lento — mala idea con PostgreSQL |
+| Proveedor | Perfil 16 GB | Nota |
+|---|---|---|
+| ⭐ **Hetzner CAX31 (ARM)** | 8 vCPU / 16 GB | 🇩🇪 La mejor relación precio/RAM. **El stock es su punto débil.** Todo el stack tiene imágenes arm64 y, compilando en el propio servidor, no hay cross-compilación |
+| ⭐ **OVHcloud VPS** (gama de 16 GB o más) | según gama | 🇫🇷 Tráfico ilimitado y backup automático del VPS incluido. Datacenters en Francia: argumento comercial directo |
+| **Hetzner CPX / CCX** | 16 GB | 🇩🇪 x86. Verifica ubicación: los datacenters de EE. UU. y la gama CCX (vCPU dedicado) cuestan bastante más |
+| **Netcup** | 16 GB | 🇩🇪🇦🇹 Alternativa sólida si OVH y Hetzner fallan |
+| Contabo | 16 GB+ | ⚠️ El más barato, pero disco lento: mala idea con varios Postgres |
 
+Precios orientativos: **comprueba precio y stock al contratar**, cambian a menudo.
 Alemania y Suiza también valen para el RGPD: solo hace falta un proveedor francés si el
-cliente lo pide expresamente. La gama CX de Hetzner ya no existe.
+cliente lo pide expresamente.
 
-💡 **Compilando en el VPS, ARM deja de tener pega.** Coolify compila directamente sobre
-la máquina, así que no hay cross-compilación de por medio (que es lo que sí complica el
-ARM cuando se usa CI). Hetzner CAX sigue siendo válido — si encuentras stock.
+⚠️ El backup automático del VPS que incluye OVH es una **instantánea de la máquina en el
+mismo proveedor**. Viene bien para reconstruir el servidor, pero **no sustituye** el
+backup de Postgres fuera del servidor (ver más abajo).
 
-### Compromiso de permanencia (OVH: *aucun* / 6 mois / 12 mois)
+### Coste y permanencia
 
-Los 12 meses salen más baratos, pero **la regla es no comprometerte con el proveedor más
-de lo que el cliente se compromete contigo.** Si el cliente se va en el mes 3 y tú tienes
-9 meses pagados por delante, esa diferencia la comes tú.
+El servidor se reparte entre los clientes que aloja: que cada uno lo vea como una línea
+de su factura (su parte del servidor + backups), desde el primer mes.
 
-- [ ] **Antes de que la tienda esté en línea → `aucun engagement`.** Un proyecto puede
-      caerse (el cliente no aprueba, cambia de idea, se retrasa). Pagas 2–3 € más al mes
-      por poder cancelar sin arrastrar nada.
-- [ ] **Con la tienda en producción y el cliente pagando mantenimiento → 12 meses.**
-      Una tienda viva no se muda: ahí el descuento es dinero gratis. El salto se hace en
-      la renovación.
+La regla con la permanencia sigue siendo **no comprometerte con el proveedor más de lo
+que tus clientes se comprometen contigo**:
 
-Y repercútelo: el VPS es un coste del cliente, no tuyo. Que aparezca como línea en su
-factura desde el primer mes.
+- [ ] **Mientras el servidor no tenga ninguna tienda en producción → sin permanencia.**
+      Un proyecto puede caerse (el cliente no aprueba, cambia de idea, se retrasa).
+- [ ] **Con tiendas vivas y clientes pagando mantenimiento → 12 meses**, en la
+      renovación. Un servidor compartido es aún más estable que uno dedicado: aunque se
+      vaya un cliente, el servidor sigue lleno con los demás.
 
-### Montaje
+### Montaje del servidor (una vez por servidor)
 
-> **Configuración de referencia (validada):** OVH **VPS-2**, 4 vCore / 8 GB / 75 GB NVMe,
-> **Ubuntu 24.04 LTS**, datacenter de **Estrasburgo**. Elegir siempre la LTS: Coolify la
-> soporta oficialmente y trae 5 años de parches de seguridad. La gama CX de Hetzner ya no
-> existe y las CAX suelen estar sin stock, así que OVH es la opción realista hoy.
+> **Sistema:** **Ubuntu 24.04 LTS**. Elegir siempre la LTS: Coolify la soporta
+> oficialmente y trae 5 años de parches de seguridad.
 
-- [ ] Contratar el VPS según la tabla + instalar Coolify
+- [ ] Contratar el servidor + instalar Coolify
 - [ ] **Swap de 4 GB** (red de seguridad barata, recomendada por Coolify)
-- [ ] Cron semanal de `docker system prune -af` (si no, el disco se llena en unos meses)
-- [ ] Coolify: proyecto + **Postgres 16** + **Redis 7** como servicios gestionados
-- [ ] Cloudflare R2: bucket + CORS + API token **restringido a ese bucket**
-- [ ] Coolify: apps `medusa-backend` y `storefront` **desde el repo Git**, con su
-      Dockerfile (detalle en `PRODUCTION_DEPLOY.md` §2)
-- [ ] Variables de entorno en la UI de Coolify (listado completo en `PRODUCTION_DEPLOY.md` §3)
-- [ ] Dominio + DNS apuntando al VPS + **SSL emitido** (Let's Encrypt vía Coolify)
+- [ ] **Compilaciones simultáneas = 1**: en Coolify, configuración del servidor →
+      **Concurrent Builds** = `1`. El valor por defecto permite varias a
+      la vez, y es justo lo que el presupuesto de memoria de arriba no aguanta. Los
+      despliegues que coincidan esperan en cola: con clientes que despliegan pocas veces
+      al mes, casi nunca pasa.
+- [ ] Cron semanal de `docker system prune -af` (si no, el disco se llena en unos meses).
+      Solo imágenes y capas sin usar: **nunca con `--volumes`**, que borraría los datos
+      de los Postgres de los clientes
+- [ ] **Destino de backups**: Coolify → *S3 Storages* → un S3 (Cloudflare R2 u otro
+      compatible) con un bucket de backups **distinto** del de las fotos de producto
+- [ ] Firewall y SSH según la Fase 6 (sirve para todos los clientes del servidor)
+
+### Alta de un cliente (una vez por cliente)
+
+- [ ] Coolify: **un proyecto nuevo por cliente** (`<cliente>`), con su entorno
+      `production`. Dentro, y solo dentro de ese proyecto:
+      - **Postgres 16** y **Redis 7** como servicios gestionados, con las credenciales que
+        genera Coolify. **Nunca** marcar *Make it publicly available*
+      - Apps `medusa-backend` y `storefront` **desde el repo Git del cliente, rama
+        `main`**, con su Dockerfile (detalle en `PRODUCTION_DEPLOY.md` §2)
+      - Variables de entorno de ese cliente (listado completo en `PRODUCTION_DEPLOY.md` §3).
+        Secretos generados para él: nada copiado de otro cliente
+- [ ] Cloudflare R2: bucket de fotos + CORS + API token **restringido a ese bucket**
+- [ ] Dominio + DNS apuntando al servidor + **SSL emitido** (Let's Encrypt vía Coolify)
 - [ ] Primer despliegue en orden: backend (migraciones) → `seed-config` → usuario admin →
       publishable key en el storefront → rebuild del storefront (`PRODUCTION_DEPLOY.md` §7)
 - [ ] **Verificar dominio en Resend**: registros **SPF, DKIM y DMARC** en DNS.
       Sin esto los emails van a spam o se rechazan.
 
-### Ajustes de memoria (10 minutos, ahorran ~500 MB)
+### Límites de memoria por contenedor
 
-- [ ] Límites por contenedor en Coolify:
-      Medusa `768M` · Storefront `512M` · Postgres `384M` · Redis `128M`
+En cada app o servicio de Coolify → *Advanced* / *Resource Limits* → límite de memoria.
+**No son opcionales en un servidor compartido**: sin ellos, un cliente con un pico se
+lleva por delante a los demás.
+
+- [ ] Backend Medusa `1G` · Storefront `768M` · Postgres `512M` · Redis `128M`
       *(con el límite puesto, Node detecta el cgroup y ajusta su memoria solo. Sin
       límite, V8 reserva ~2 GB de heap y **nunca los devuelve al sistema**)*
 - [ ] Postgres: `shared_buffers=128MB`, `max_connections=50`, `work_mem=4MB`
-- [ ] Redis: `maxmemory 128mb`, `maxmemory-policy allkeys-lru`
-      *(sin techo, Redis crece hasta que el sistema mata algún proceso)*
-- [ ] **Cloudflare delante del storefront**, con caché sobre `/_next/image` — quita del
+- [ ] Redis: `maxmemory 100mb`, `maxmemory-policy noeviction`
+      *(el techo va por debajo del límite del contenedor. `noeviction` y no
+      `allkeys-lru`: aquí Redis también guarda la cola de eventos y el estado de los
+      workflows, y con LRU podría descartar un evento de pedido pendiente para liberar
+      memoria. Mejor un error visible que un email de pedido perdido)*
+- [ ] **Cloudflare delante del storefront**, con caché sobre `/_next/image`: quita del
       servidor el trabajo de redimensionar fotos, que es su mayor gasto de CPU
+
+### Backups de Postgres fuera del servidor
+
+Si el servidor se pierde, se pierden **todos** los clientes a la vez. Por eso el backup
+de cada base de datos sale del servidor.
+
+- [ ] En cada Postgres de cliente → *Backups* → programación diaria **`0 3 * * *`**
+      (03:00, fuera de horas de compra), con destino el S3 del montaje.
+- [ ] **Retención: 14 días en S3** y **2 copias locales** en el servidor (sirven para
+      restaurar rápido, no para un desastre).
+- [ ] Ruta separada por cliente dentro del bucket de backups, para poder entregar o
+      borrar los backups de uno sin tocar a los demás.
+- [ ] Token del bucket de backups **solo** con acceso a ese bucket, y distinto del token
+      de las fotos.
+- [ ] **Restauración probada** antes de abrir cada tienda (Fase 6) y después una vez al
+      trimestre. Un backup no verificado no es un backup.
 
 **🚪 Puerta:** `https://api.dominio.com/health` responde OK, el admin carga en `/app` con
 SSL válido, y el storefront carga con SSL válido. Además: **un despliegue completo de las
-dos apps sin que muera por falta de memoria**, y `docker stats` con todos los contenedores
-por debajo de su límite una vez terminado.
-*(Nota: `/health` solo existe con `medusa start` — el comando de producción. En
+dos apps sin que muera por falta de memoria** con las demás tiendas del servidor en
+marcha, `docker stats` con todos los contenedores por debajo de su límite, y **un backup
+de Postgres visible en R2**.
+*(Nota: `/health` solo existe con `medusa start`, el comando de producción. En
 `medusa develop` no está.)*
+
+### Cuándo pasar un cliente a un VPS dedicado
+
+Basta con que se cumpla **uno** de estos criterios:
+
+- [ ] **Tráfico o ventas sostenidos por encima de lo "pequeño"**: más de ~1.000 pedidos o
+      ~50.000 visitas al mes durante dos meses seguidos, o catálogo de más de ~2.000
+      productos.
+- [ ] **Sus contenedores tocan el límite de memoria** de forma repetida, o necesitaría
+      subirlos tanto que ya no caben los demás clientes.
+- [ ] **Satura la cola de compilación**: despliega varias veces por semana y hace esperar
+      a los demás.
+- [ ] **Aislamiento contractual**: el cliente lo pide (auditoría, contrato de encargo de
+      tratamiento RGPD, datos sensibles) o quiere que el servidor sea suyo.
+- [ ] **Necesidades propias de disponibilidad**: un SLA, una ventana de mantenimiento
+      distinta o un pico previsto (rebajas, campaña en medios) que no debe afectar a los
+      demás.
+- [ ] **El servidor compartido va justo**: RAM sostenida por encima del ~80 % o disco por
+      encima del ~70 %. Se muda primero al cliente que más consume.
+
+**Cómo se muda:** VPS dedicado de 8 GB (suficiente para uno solo) → Coolify → mismo
+proyecto → restaurar el último backup de Postgres → desplegar → cambiar el DNS. Las
+fotos siguen en R2 y no se mueven.
 
 ### ¿Cuánto aguanta este montaje?
 
-Cifras para una tienda de moda con Cloudflare delante.
+Cifras orientativas **por cliente** para una tienda de moda con Cloudflare delante.
 
-| | VPS 8 GB | VPS 16 GB |
+| | Cliente en servidor compartido | Cliente en VPS dedicado 8 GB |
 |---|---|---|
-| Visitas al mes | hasta ~150.000 | hasta ~400.000 |
-| Pedidos al mes | hasta ~2.000 | hasta ~5.000 |
-| Productos en catálogo | hasta ~2.000 | 5.000+ |
-| Visitantes a la vez (pico) | 100–200 | 300–500 |
+| Visitas al mes | hasta ~50.000 | hasta ~150.000 |
+| Pedidos al mes | hasta ~1.000 | hasta ~2.000 |
+| Productos en catálogo | hasta ~2.000 | hasta ~2.000 |
 
 **Un comercio pequeño francés está a años luz de estos límites.** El caso típico —10 a 50
-pedidos al mes con 2.000–10.000 visitas— usa una fracción del VPS de 8 GB. Ese servidor
-está dimensionado por el despliegue, no por el tráfico.
+pedidos al mes con 2.000–10.000 visitas— usa una fracción de su parte del servidor.
 
 ⚠️ **Cuidado al estimar visitas a partir de ventas.** La conversión normal en e-commerce
 es del **1–3 %**, así que:
@@ -420,23 +491,23 @@ La cuota de correo se agota mucho antes que la RAM.
 
 ### Opción avanzada — compilar en GitHub Actions
 
-**No hace falta hoy.** Se documenta por si más adelante los despliegues de 20 minutos
-estorban, con muchos clientes o mucha frecuencia de cambios.
+**No hace falta hoy.** Se documenta por si más adelante los despliegues de 20 minutos o
+la cola de compilación estorban, con muchos clientes o mucha frecuencia de cambios.
 
 La idea: GitHub Actions compila las dos imágenes y las publica en **GHCR**; Coolify solo
-se las descarga y las arranca. El VPS deja de compilar.
+se las descarga y las arranca. El servidor deja de compilar.
 
-| | Compilando en el VPS (actual) | Compilando en Actions |
+| | Compilando en el servidor (actual) | Compilando en Actions |
 |---|---|---|
-| VPS mínimo | 8 GB (13–18 €) | **4 GB (5–9 €)** |
-| Duración del despliegue | 15–25 min | **1–2 min** |
+| Memoria reservada para compilar | ~3–4 GB por servidor | **ninguna**: cabe algún cliente más |
+| Duración del despliegue | 15–25 min, en cola | **1–2 min**, sin cola |
 | Rollback | revertir commit + recompilar | **redesplegar la imagen anterior** |
 | Piezas que mantener | ninguna | workflow, GHCR, tokens, **por cada repo de cliente** |
 | ARM (Hetzner CAX) | nativo, sin fricción | cross-compilación lenta o runners de pago |
 
-**Por qué no es el camino por defecto:** a ~7 €/mes de diferencia por cliente, el CI se
-convierte en una pieza más que mantener y depurar. Con comercios pequeños que despliegan
-una vez al mes, no compensa.
+**Por qué no es el camino por defecto:** con el servidor compartido, el coste de compilar
+en él ya se reparte entre todos los clientes. El CI sería una pieza más que mantener y
+depurar en cada repo, y con comercios pequeños que despliegan una vez al mes no compensa.
 
 **Se puede adoptar cliente a cliente, cuando quieras**, sin tocar nada más: el Dockerfile
 es exactamente el mismo, solo cambia quién lo ejecuta. Ojo a los ~2.000 minutos/mes
@@ -492,7 +563,8 @@ es opcional y ninguno es caro — lo caro es saltárselo.
 - [ ] `robots.txt` **sin `Disallow: /`** (si no, Google no indexa nada)
 
 ### Datos y RGPD 🇫🇷
-- [ ] **Backup automático de Postgres** configurado en Coolify
+- [ ] **Backup automático de Postgres** configurado en Coolify, diario y **fuera del
+      servidor** (R2/S3, 14 días de retención: ver Fase 5)
 - [ ] **Restauración probada al menos una vez.** Un backup no verificado no es un backup
 - [ ] Banner de consentimiento de cookies si hay analytics/marketing (obligatorio en la UE).
       Verificar qué recoge `@agilo/medusa-analytics-plugin` antes de lanzar

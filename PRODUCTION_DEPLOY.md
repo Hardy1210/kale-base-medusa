@@ -3,14 +3,14 @@
 **Este documento empieza donde `CLIENT_SETUP.md` termina.**
 Úsalo cuando el código ya está configurado para el cliente y hay que subirlo a producción.
 
-**Stack:** OVHcloud VPS · Coolify · Cloudflare R2 · Stripe · Resend · PostgreSQL 16 · Redis 7
-· Sentry · Better Stack
+**Stack:** servidor Hetzner u OVH · Coolify · Cloudflare R2 · Stripe · Resend ·
+PostgreSQL 16 · Redis 7 · Sentry · Better Stack
 
-**VPS de referencia:** OVH **VPS-2** — 4 vCore / 8 GB RAM / 75 GB NVMe / 1 Gbit/s sin
-límite, Ubuntu 24.04 LTS, datacenter de **Estrasburgo (Francia)**.
-Los 8 GB no son por tráfico sino por el despliegue: Coolify compila en el propio
-servidor y la compilación pide ~3 GB extra. Justificación completa y alternativas en
-[`ROADMAP_PRODUCCION.md` § Fase 5](./ROADMAP_PRODUCCION.md#fase-5--infraestructura-un-vps-por-cliente).
+**Servidor:** 16 GB compartido por 2–3 clientes pequeños, Ubuntu 24.04 LTS, con las
+compilaciones de Coolify limitadas a 1 y un **proyecto de Coolify por cliente** (su
+Postgres, su Redis, sus variables). Un cliente que crece pasa a un VPS dedicado.
+Presupuesto de memoria, `mem_limit`, backups y criterios de mudanza en
+[`ROADMAP_PRODUCCION.md` § Fase 5](./ROADMAP_PRODUCCION.md#fase-5--infraestructura-servidor-compartido).
 
 ---
 
@@ -98,11 +98,20 @@ Dos cosas que conviene saber antes de configurar Coolify:
 
 ## 2. Coolify — setup inicial
 
-- [ ] Instalar Coolify en el VPS ([docs.coolify.io/installation](https://docs.coolify.io/installation))
-- [ ] Conectar el repositorio Git desde Coolify UI (GitHub/GitLab)
-- [ ] Crear un proyecto en Coolify para este cliente
-- [ ] Añadir servicio **PostgreSQL 16** (built-in) → guardar la `DATABASE_URL` generada
-- [ ] Añadir servicio **Redis 7** (built-in) → guardar la `REDIS_URL` generada
+- [ ] **Solo si el servidor es nuevo:** instalar Coolify
+  ([docs.coolify.io/installation](https://docs.coolify.io/installation)) y hacer el
+  "Montaje del servidor" de la Fase 5 del roadmap (swap, **Concurrent Builds = 1**,
+  destino S3 de backups). En un servidor compartido que ya existe, esto ya está hecho.
+- [ ] Conectar el repositorio Git del cliente desde Coolify UI (GitHub/GitLab)
+- [ ] Crear **un proyecto nuevo en Coolify para este cliente**. Todo lo que sigue va
+  dentro de ese proyecto, nunca en el de otro cliente
+- [ ] Añadir servicio **PostgreSQL 16** (built-in) → guardar la `DATABASE_URL` generada.
+  Sin *Make it publicly available*. Límite de memoria `512M` y backup diario a S3
+  (Fase 5)
+- [ ] Añadir servicio **Redis 7** (built-in) → guardar la `REDIS_URL` generada. Límite de
+  memoria `128M`
+- [ ] Límites de memoria de las apps: `medusa-backend` `1G`, `storefront` `768M`
+  (Fase 5)
 - [ ] Añadir aplicación **medusa-backend**:
   - Source: repo Git del cliente, rama `main`
   - Subdirectory: `medusa`
