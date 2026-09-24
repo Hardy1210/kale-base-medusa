@@ -14,7 +14,9 @@
   ],
   "scripts": {
     "build": "medusa build",
-    "seed": "medusa exec ./src/scripts/seed.ts",
+    "seed": "medusa exec ./src/scripts/seed-config.ts && medusa exec ./src/scripts/seed-demo.ts",
+    "seed:config": "medusa exec ./src/scripts/seed-config.ts",
+    "seed:demo": "medusa exec ./src/scripts/seed-demo.ts",
     "start": "medusa start",
     "dev": "medusa develop",
     "emails:dev": "email dev --dir=src/modules/resend/emails",

@@ -64,7 +64,10 @@ importar el catálogo duele.
       Obligatorio incluir en las facturas: «TVA non applicable, article 293 B du CGI».
     - **No** → hay que configurar los tipos de IVA reales en el admin (Settings → Tax Regions).
       El seed los crea **vacíos**: sin esto la tienda cobra 0 % de IVA.
-- [ ] **Países donde va a vender.** Por defecto el seed abre 8 (`hr, gb, de, dk, se, fr, es, it`).
+- [ ] **Países donde va a vender.** Por defecto `seed-config.ts` abre solo `fr` (constantes
+  `COUNTRIES` y `CURRENCY_CODE` al principio del archivo; hay una lista de ejemplo de la UE
+  comentada debajo). Ajustarlo **antes** de la primera ejecución: después, la región no se
+  toca desde el script sino en el admin.
   - Recomendación: **dejar solo el país del cliente al lanzar.** Vender a otro país de la
     UE convierte la factura en **obligatoria** (venta a distancia intracomunitaria), y
     superar 10.000 €/año de ventas B2C intra-UE obliga a IVA de destino + registro **OSS**.
@@ -108,7 +111,8 @@ Sin esto no se toca ni una línea.
       `privacy-policy`, `terms-of-use`, `cookie-policy`. 🇫🇷 Añadir **Mentions légales**
       (obligatorias en Francia) y **CGV**.
 - [ ] Importar el catálogo CSV del cliente (admin → Products → Import)
-- [ ] Sustituir las imágenes del seed por las del cliente
+- [ ] Sustituir las imágenes del seed por las del cliente. En producción no se ejecuta
+      `seed-demo.ts` (sofás de demo), solo `seed-config.ts`: ver `PRODUCTION_DEPLOY.md` §7
 
 **🚪 Puerta:** navegar la tienda entera sin encontrar ni un texto o imagen del starter
 ("Sofa Society", "Mi Tienda", sofás de demo).

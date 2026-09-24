@@ -28,7 +28,7 @@ yarn
 docker-compose up -d           # PostgreSQL (5433), Redis (6379), MinIO (9000/9001)
 yarn build
 yarn medusa db:migrate
-yarn seed                      # Load sample data
+yarn seed                      # seed:config (store setup) + seed:demo (sample products)
 yarn medusa user -e "admin@medusa.local" -p "supersecret"
 yarn dev                       # Runs on http://localhost:9000
 ```
@@ -51,7 +51,9 @@ yarn dev                       # Runs on http://localhost:8000
 | `yarn dev` | Start dev server with hot reload |
 | `yarn build` | Compile TypeScript |
 | `yarn medusa db:migrate` | Run pending DB migrations |
-| `yarn seed` | Seed database with sample data |
+| `yarn seed` | `seed:config` + `seed:demo` in sequence (local only) |
+| `yarn seed:config` | Store setup: region, countries, currency, sales channel, publishable key, stock location, shipping, taxes. Idempotent, safe for production. Per-client defaults at the top of `src/scripts/seed-config.ts` |
+| `yarn seed:demo` | Demo catalog (categories, collections, products). Local only, not idempotent |
 | `yarn test:unit` | Run unit tests |
 | `yarn test:integration:http` | HTTP integration tests |
 | `yarn test:integration:modules` | Module integration tests |

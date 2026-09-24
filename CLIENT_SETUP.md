@@ -202,7 +202,8 @@ docker-compose up -d
 # 2. Ejecutar migraciones
 yarn medusa db:migrate
 
-# 3. Cargar datos de demo (opcional)
+# 3. Configuración de la tienda (región, envíos, impuestos, publishable key) + catálogo
+#    de demo. En producción solo se ejecuta seed:config (ver PRODUCTION_DEPLOY.md §7)
 yarn seed
 
 # 4. Crear usuario administrador
