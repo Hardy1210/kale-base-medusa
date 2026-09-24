@@ -673,9 +673,38 @@ sus `.dockerignore`, y son iguales para todos los clientes: no hay que escribirl
 copiarlos de ningún sitio. El del storefront ya aprovecha `output: "standalone"`
 (~200 MB, no ~1,2 GB).
 
-Quién ejecuta ese Dockerfile es una decisión aparte: **el propio VPS vía Coolify** (lo
-que hacemos) o GitHub Actions (la opción avanzada del final de la Fase 5). El archivo es
-el mismo en los dos casos.
+Quién ejecuta ese Dockerfile es una decisión aparte: **el propio servidor vía Coolify**
+(lo que hacemos) o GitHub Actions (la opción avanzada del final de la Fase 5). El archivo
+es el mismo en los dos casos.
+
+## Pendiente no bloqueante (operación)
+
+No impiden abrir la primera tienda, pero conviene resolverlos antes de tener varias en
+producción. Van en la base, no en cada cliente.
+
+- [ ] **Entorno de staging.** Hoy lo único que hay es local y producción: la primera vez
+  que un cambio corre en un contenedor real con Postgres y Redis de Coolify es en la
+  tienda del cliente. Definir un staging (un proyecto de Coolify más en el servidor
+  compartido, con BD propia, Stripe en modo test y `DISALLOW_ROBOTS=true`) y a qué rama
+  sigue. Lo necesita además Apple Pay (ver Backlog): no se puede probar en localhost.
+- [ ] **Flujo de los despliegues posteriores al primero.** `PRODUCTION_DEPLOY.md` solo
+  cubre el primer despliegue. Falta documentar:
+  - **Backup manual de Postgres antes de cualquier despliegue que traiga migraciones.**
+    Las migraciones son irreversibles y el Post-deployment de Coolify no hace rollback:
+    el backup diario puede tener hasta 24 h de pedidos de retraso.
+  - **Cómo llega una actualización de la base (`medusa-2.19`) al repo de un cliente y de
+    ahí a producción**: merge o cherry-pick hacia el `main` del cliente, qué se revisa
+    antes (migraciones nuevas, variables nuevas en `.env.template`, cambios en los
+    Dockerfiles), qué se prueba en staging y en qué orden se despliegan backend y
+    storefront.
+  - Qué hacer si una migración falla a mitad: restaurar el backup previo y volver al
+    commit anterior.
+- [ ] **Revisión de Dependabot.** No hay `.github/dependabot.yml`. Decidir si se activa,
+  con qué ecosistemas y directorios (`medusa/` con Yarn 4 y `storefront/` con Yarn 1 son
+  independientes), con qué frecuencia y agrupación de PR para no ahogarse en ellas, y
+  quién revisa las alertas de seguridad: en la base y en cada repo de cliente. Ojo con
+  los paquetes `@medusajs/*`: van fijados a la misma versión exacta y se suben todos
+  juntos, nunca uno a uno.
 
 ## Backlog / opcional (solo si el cliente lo pide)
 
@@ -709,7 +738,7 @@ el mismo en los dos casos.
 
   **Requisito bloqueante para Apple Pay:** dominio verificado sobre HTTPS (fichero en
   `/.well-known/`, Stripe lo automatiza). **No se puede probar en localhost** — no empezar
-  hasta tener el staging de la Fase 5 desplegado. Google Pay sí se prueba en Chrome sin
+  hasta tener el staging desplegado (ver "Pendiente no bloqueante"). Google Pay sí se prueba en Chrome sin
   nada extra.
 
   **Opción B (descartada por ahora) — migrar entero a `<PaymentElement>`:** 2-3 días.
