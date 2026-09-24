@@ -1,0 +1,18 @@
+{
+  // Formate a chaque sauvegarde.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // CLE DU DISPOSITIF : Prettier ne formate QUE les fichiers pour lesquels il
+  // trouve une config. Seul storefront/.prettierrc existe, donc le backend
+  // medusa/ n'est jamais touche (ses 63 fichiers utilisent un autre style :
+  // guillemets simples + points-virgules, jamais passes sous Prettier).
+  "prettier.requireConfig": true,
+
+  "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+  "[css]": { "editor.defaultFormatter": "esbenp.prettier-vscode" }
+}
