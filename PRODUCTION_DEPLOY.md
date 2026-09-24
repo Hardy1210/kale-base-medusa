@@ -109,9 +109,27 @@ Dos cosas que conviene saber antes de configurar Coolify:
   - Dockerfile: `medusa/Dockerfile`
   - Port: `9000`
   - Dominio: `https://api.tudominio.com`
-  - **Release Command:** `./node_modules/.bin/medusa db:migrate`
+  - **Post-deployment Command:** `./node_modules/.bin/medusa db:migrate`
+  - **Pre-deployment Command:** vacío
 
-  > ⚠️ **Se llama al binario por su ruta, no `yarn medusa db:migrate`.** La imagen de
+  > ⚠️ **Coolify no tiene "Release Command": tiene dos campos, y corren en contenedores
+  > distintos.**
+  >
+  > | Campo | Cuándo | En qué contenedor |
+  > |---|---|---|
+  > | **Pre-deployment** | Antes de sustituir la app | El **viejo**, el que está sirviendo (con el código anterior). En el primer despliegue no hay contenedor y no se ejecuta |
+  > | **Post-deployment** | Con la app nueva ya arrancada | El **nuevo**, con el código recién compilado |
+  >
+  > Las migraciones van en **Post-deployment**: tienen que ser las del código nuevo. En
+  > Pre-deployment se ejecutarían las del código anterior y, en el primer despliegue, no
+  > se ejecutarían. Dos consecuencias a conocer:
+  > - El contenedor nuevo arranca unos segundos **antes** de migrar. Mientras tanto, lo
+  >   que dependa de tablas nuevas puede fallar. Con el tráfico de un comercio pequeño es
+  >   asumible; si una migración es delicada, despliega fuera de horas.
+  > - Si el Post-deployment falla, el despliegue se marca como fallido pero **Coolify no
+  >   hace rollback**: la app nueva sigue en marcha sin migrar. Revisa el log y relanza.
+  >
+  > **Se llama al binario por su ruta, no `yarn medusa db:migrate`.** La imagen de
   > producción no habilita corepack a propósito (ver el comentario del `Dockerfile`), así
   > que ahí `yarn` sería el yarn 1 global de la imagen y no el 4.7.0 del proyecto.
   > Funciona de rebote, pero depende de un detalle de la imagen base que puede cambiar.
@@ -267,8 +285,9 @@ Lanzar en este orden desde Coolify UI:
 
 - [ ] Deploy **PostgreSQL** → verificar que está `Running`
 - [ ] Deploy **Redis** → verificar que está `Running`
-- [ ] Deploy **medusa-backend** → verificar que el Release Command
-  (`./node_modules/.bin/medusa db:migrate`, ver §2) corrió sin errores.
+- [ ] Deploy **medusa-backend** → verificar en el log del despliegue que el
+  Post-deployment Command (`./node_modules/.bin/medusa db:migrate`, ver §2) corrió sin
+  errores en el contenedor nuevo.
   **Las migraciones se lanzan ahí y solo ahí**: el `CMD` del Dockerfile no las ejecuta a
   propósito, porque son irreversibles y no deben dispararse en cada reinicio o escalado
   del contenedor
@@ -279,7 +298,7 @@ cd /app
 ./node_modules/.bin/medusa user -e "admin@tudominio.com" -p "password-seguro"
 ```
 
-  *(Ruta directa al binario por el mismo motivo que el Release Command: en la imagen de
+  *(Ruta directa al binario por el mismo motivo que el Post-deployment Command: en la imagen de
   producción `yarn` no es el del proyecto.)*
 
 - [ ] Ir a `https://api.tudominio.com/app/settings/publishable-api-keys`

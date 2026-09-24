@@ -74,8 +74,9 @@ EXPOSE 9000
 #
 # Las migraciones NO se ejecutan aquí a propósito: son irreversibles y no deben
 # dispararse solas en cada reinicio o escalado del contenedor. Se lanzan una vez
-# por despliegue desde el Release Command de Coolify, que es un paso aparte del
-# arranque:
+# por despliegue desde el Post-deployment Command de Coolify, que corre en ESTE
+# contenedor (el nuevo) una vez arrancado. No en el Pre-deployment: ese corre en
+# el contenedor anterior, con el código viejo.
 #
 #   ./node_modules/.bin/medusa db:migrate
 #

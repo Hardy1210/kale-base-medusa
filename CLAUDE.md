@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Overview
 
 This is a **Medusa 2 e-commerce monorepo** with two independent packages:
-- **`medusa/`** — Medusa 2.8.8 backend (Node.js, PostgreSQL, Redis)
+- **`medusa/`** — Medusa 2.19.0 backend (Node.js, PostgreSQL, Redis)
 - **`storefront/`** — Next.js 15 App Router frontend (React 19, Tailwind CSS)
 
 The two packages use **different Yarn versions** and are managed separately (no root-level workspaces).
