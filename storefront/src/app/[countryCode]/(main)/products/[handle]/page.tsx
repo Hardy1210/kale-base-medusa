@@ -6,7 +6,10 @@ import { getRegion, listRegions } from "@lib/data/regions"
 import {
   getProductByHandle,
   getProductFashionDataByHandle,
+  getVariantsStock,
 } from "@lib/data/products"
+import { CACHE_TAGS } from "@lib/cache-tags"
+import { getVariantItemsInStock } from "@lib/util/inventory"
 import { brand } from "@lib/brand"
 import ProductTemplate from "@modules/products/templates"
 
@@ -30,7 +33,7 @@ export async function generateStaticParams() {
 
     const { products } = await sdk.store.product.list(
       { fields: "handle" },
-      { next: { tags: ["products"] } }
+      { next: { tags: [CACHE_TAGS.products] } }
     )
 
     const staticParams = countryCodes
@@ -101,11 +104,10 @@ export default async function ProductPage({ params }: Props) {
 
   const firstVariant = pricedProduct.variants?.[0]
   const calculatedPrice = firstVariant?.calculated_price
+  // El stock no va en la ficha cacheada: se pide aparte con un TTL corto.
+  const stock = await getVariantsStock([pricedProduct.id])
   const inStock = pricedProduct.variants?.some(
-    // `inventory_quantity` llega en la respuesta pero no está en el tipo del
-    // SDK. Se acota al campo concreto en vez de usar `any`, que apagaba el
-    // chequeo de tipos de toda la variante.
-    (v) => ((v as { inventory_quantity?: number }).inventory_quantity ?? 0) > 0
+    (v) => getVariantItemsInStock({ ...v, ...stock.get(v.id) }) > 0
   )
   const jsonLd = {
     "@context": "https://schema.org",
