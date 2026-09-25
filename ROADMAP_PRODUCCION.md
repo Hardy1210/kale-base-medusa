@@ -274,6 +274,23 @@ escala. Si algún día los despliegues de 20 minutos molestan, está la
 - [x] ~~**Seed separado en configuración y demo**~~ ✅ **HECHO en el starter.**
       `seed-config.ts` (región, envíos, impuestos, publishable key; idempotente, apto
       para producción) y `seed-demo.ts` (catálogo de demo, solo local).
+- [x] ~~**Invalidación de la caché del catálogo del storefront**~~ ✅ **HECHO en el
+      starter** (PR #1, `fc98528`). Antes el catálogo se cacheaba con `force-cache` y
+      nada lo invalidaba: lo cambiado en el admin **no se veía en la tienda hasta el
+      siguiente despliegue**. Ahora:
+      - El subscriber `revalidate-storefront` avisa a `/api/revalidate` del storefront
+        al cambiar productos, variantes, colecciones, categorías, tipos, materiales o
+        colores. Se ve con un F5 normal en segundos.
+      - Red de seguridad: TTL de 5 min en el catálogo y de 1 h en regiones, envíos y
+        métodos de pago. El stock va aparte con TTL de 30 s, para que las ventas no
+        invaliden el catálogo.
+      - Si el storefront está caído, el guardado en el admin no se bloquea: el fallo
+        va al log y a Sentry, y el cambio se ve al caducar el TTL.
+      ⚠️ **`REVALIDATE_SECRET` tiene que valer lo mismo en el backend y en el
+      storefront**: si difieren, los avisos se rechazan con 401 y todo va con 5 min
+      de retraso.
+      Solo cubre el TTL (sin evento): las listas de precios y añadir o quitar
+      productos desde la página de una colección.
 
 ### Por cada cliente
 
@@ -590,6 +607,9 @@ restauración de backup ejecutada de verdad.
 - [ ] Reembolsar esa compra de prueba desde Stripe y confirmar que se procesa
 - [ ] Subir una imagen de producto → se guarda en R2 y se ve en el storefront
 - [ ] `sitemap.xml` con URLs reales → enviar a Google Search Console
+- [ ] **Caché del catálogo:** cambiar dos veces seguidas un producto en el admin, y
+      que cada cambio se vea con un F5 normal. Medir también el desfase de relojes del
+      servidor (ver §9 de `PRODUCTION_DEPLOY.md`)
 - [ ] Probar el checkout en **móvil real**, no solo en el simulador del navegador
 - [ ] Entregar al cliente: credenciales del admin, cómo despachar un pedido, a quién
       llamar si algo falla
@@ -682,6 +702,15 @@ es el mismo en los dos casos.
 
 No impiden abrir la primera tienda, pero conviene resolverlos antes de tener varias en
 producción. Van en la base, no en cada cliente.
+
+- [ ] **Activar GitHub Actions en el repo de la base.** Es un fork de
+  `Agilo/fashion-starter`, y en los forks GitHub deja los workflows desactivados hasta
+  que se activan a mano (pestaña Actions → *enable*; por la API no se puede). Hasta hoy
+  el lint de CI **no ha corrido nunca**: el PR #1 se fusionó con las comprobaciones
+  hechas en local. Al activarlo, revisar que estén los 5 secretos que lee
+  `.github/workflows/node.js.yml`. Comprobar lo mismo en cada repo de cliente que salga
+  de un fork: sin esto, la puerta de la Fase 4 ("el CI de GitHub está verde") no se
+  puede cumplir.
 
 - [ ] **Entorno de staging.** Hoy lo único que hay es local y producción: la primera vez
   que un cambio corre en un contenedor real con Postgres y Redis de Coolify es en la
