@@ -1,7 +1,9 @@
 import { MetadataRoute } from "next"
+import { HttpTypes } from "@medusajs/types"
 import { sdk } from "@lib/config"
 import { getCollectionsList } from "@lib/data/collections"
 import { brand } from "@lib/brand"
+import { CACHE_TAGS, CATALOG_TTL } from "@lib/cache-tags"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = brand.url
@@ -26,10 +28,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let productPages: MetadataRoute.Sitemap = []
   try {
-    const { products } = await sdk.store.product.list(
-      { fields: "handle", limit: 1000 },
-      { next: { tags: ["products"] } }
-    )
+    // `sdk.client.fetch` y no `sdk.store.product.list`: el tipo de este
+    // último no admite `next.revalidate`.
+    const { products } = await sdk.client.fetch<{
+      products: HttpTypes.StoreProduct[]
+    }>("/store/products", {
+      query: { fields: "handle", limit: 1000 },
+      next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.products] },
+    })
     productPages = products
       .filter((p): p is typeof p & { handle: string } => Boolean(p.handle))
       .map((p) => ({

@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { CONFIG_TTL } from "@lib/cache-tags"
 import { HttpTypes } from "@medusajs/types"
 
 // Shipping actions
@@ -8,8 +9,7 @@ export const listCartPaymentMethods = async function (regionId: string) {
       `/store/payment-providers`,
       {
         query: { region_id: regionId },
-        next: { tags: ["payment_providers"] },
-        cache: "force-cache",
+        next: { revalidate: CONFIG_TTL, tags: ["payment_providers"] },
       }
     )
     .then(({ payment_providers }) => payment_providers)

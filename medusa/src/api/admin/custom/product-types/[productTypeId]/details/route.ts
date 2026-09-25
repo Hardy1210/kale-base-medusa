@@ -1,6 +1,7 @@
-import { Modules } from '@medusajs/framework/utils';
-import { MedusaRequest, MedusaResponse } from '@medusajs/framework';
-import { z } from 'zod';
+import { Modules } from "@medusajs/framework/utils";
+import { updateProductTypesWorkflow } from "@medusajs/medusa/core-flows";
+import { MedusaRequest, MedusaResponse } from "@medusajs/framework";
+import { z } from "zod";
 
 const productTypeFieldsMetadataSchema = z.object({
   image: z
@@ -33,21 +34,28 @@ export async function POST(
   res: MedusaResponse,
 ): Promise<void> {
   const { productTypeId } = req.params;
-  const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+  const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
   const customFields = productTypeFieldsMetadataSchema.parse(body);
 
   const productService = req.scope.resolve(Modules.PRODUCT);
   const productType = await productService.retrieveProductType(productTypeId);
 
-  const updatedProductType = await productService.updateProductTypes(
-    productTypeId,
-    {
-      metadata: {
-        ...productType.metadata,
-        ...customFields,
+  // Workflow y no `productService.updateProductTypes`: el método del módulo
+  // no emite `product-type.updated`, y sin ese evento el storefront no se
+  // entera del cambio (subscribers/revalidate-storefront.ts).
+  const {
+    result: [updatedProductType],
+  } = await updateProductTypesWorkflow(req.scope).run({
+    input: {
+      selector: { id: productTypeId },
+      update: {
+        metadata: {
+          ...productType.metadata,
+          ...customFields,
+        },
       },
     },
-  );
+  });
 
   res.json(updatedProductType);
 }

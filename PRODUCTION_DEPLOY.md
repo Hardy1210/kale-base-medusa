@@ -184,6 +184,12 @@ AUTH_CORS=https://api.tudominio.com
 JWT_SECRET=
 COOKIE_SECRET=
 
+# Invalidación de la caché del storefront al editar el catálogo en el admin.
+# ⚠️ EL MISMO valor que REVALIDATE_SECRET del storefront (este no se genera
+# distinto). Si no coinciden, los cambios tardan hasta 5 min en verse y el log
+# del backend muestra "respondió 401".
+REVALIDATE_SECRET=
+
 # Marca — cubre TODOS los emails (asuntos, cuerpo, cabecera y pie)
 STORE_NAME=Mi Tienda
 
@@ -223,7 +229,7 @@ NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_...        ← §7, paso 4 (sale de seed-c
 NEXT_PUBLIC_BASE_URL=https://tienda.tudominio.com
 NEXT_PUBLIC_DEFAULT_REGION=fr
 NEXT_PUBLIC_STRIPE_KEY=pk_live_...               ← obligatorio, el build falla sin esto
-REVALIDATE_SECRET=                               ← openssl rand -hex 32
+REVALIDATE_SECRET=                               ← openssl rand -hex 32, EL MISMO que en el backend
 NEXT_PUBLIC_INSTAGRAM_URL=https://instagram.com/tutienda
 DISALLOW_ROBOTS=                                 ← dejar vacío en producción
 NEXT_PUBLIC_SENTRY_DSN=                          ← proyecto del STOREFRONT, no el del backend
@@ -363,3 +369,26 @@ Antes: PostgreSQL y Redis desplegados y en `Running`.
 - [ ] Subir una imagen de producto desde el admin → confirmar que se guarda en R2
 - [ ] Las imágenes de productos son visibles en el storefront (valida `next.config.js` R2)
 - [ ] `https://tienda.tudominio.com/sitemap.xml` → accesible y con URLs reales
+- [ ] **Caché del catálogo:** cambia el título de un producto en el admin, guarda,
+      y vuelve a cambiarlo. Tras cada guardado, un F5 normal (no hard refresh) en la
+      ficha debe mostrar el cambio en segundos. Si tarda ~5 min, el aviso no llega:
+      busca `No se pudo invalidar la caché del storefront` en el log del backend
+      (lo normal es un `REVALIDATE_SECRET` distinto en los dos servicios)
+- [ ] **Desfase de relojes del servidor.** Next 15 decide si una entrada de caché
+      está invalidada comparando la hora de la invalidación con la de la entrada, y
+      esas horas no salen del mismo reloj. Si el reloj de pared (`CLOCK_REALTIME`)
+      y `CLOCK_MONOTONIC` se separan, las invalidaciones se ignoran en silencio y
+      solo queda el TTL de 5 min. Mide la diferencia dos veces, con **una hora** entre
+      medias, en el servidor:
+
+      ```bash
+      awk -v now="$(date +%s.%N)" '{ printf "%.3f\n", now - $1 }' /proc/uptime
+      ```
+
+      (`/proc/uptime` es el reloj de arranque, igual que `CLOCK_MONOTONIC` en un
+      servidor que nunca se suspende.)
+
+      La resta entre las dos medidas es el desfase por hora. Lo normal es que esté
+      por debajo de unos milisegundos. **Si pasa de ~1 s/h**, no lo arregla ajustar
+      el NTP: la solución es un `cacheHandler` propio en `next.config.js` que borre
+      las entradas por etiqueta en lugar de comparar horas

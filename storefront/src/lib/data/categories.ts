@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { CACHE_TAGS, CATALOG_TTL } from "@lib/cache-tags"
 import { HttpTypes } from "@medusajs/types"
 
 export const listCategories = async function () {
@@ -7,8 +8,7 @@ export const listCategories = async function () {
       "/store/product-categories",
       {
         query: { fields: "+category_children" },
-        next: { tags: ["categories"] },
-        cache: "force-cache",
+        next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.categories] },
       }
     )
     .then(({ product_categories }) => product_categories)
@@ -27,8 +27,7 @@ export const getCategoriesList = async function (
       offset,
       fields: fields ? fields.join(",") : undefined,
     },
-    next: { tags: ["categories"] },
-    cache: "force-cache",
+    next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.categories] },
   })
 }
 
@@ -37,8 +36,7 @@ export const getCategoryByHandle = async function (categoryHandle: string[]) {
     `/store/product-categories`,
     {
       query: { handle: categoryHandle },
-      next: { tags: ["categories"] },
-      cache: "force-cache",
+      next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.categories] },
     }
   )
 }

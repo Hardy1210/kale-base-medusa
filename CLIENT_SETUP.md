@@ -106,6 +106,7 @@ del JSON-LD de producto en `products/[handle]/page.tsx`.
 | `JWT_SECRET` | Secret para firmar tokens JWT. En producción Medusa **no arranca** si falta, si vale `supersecret` o si tiene menos de 32 caracteres |
 | `COOKIE_SECRET` | Secret para firmar cookies de sesión. Mismas reglas que `JWT_SECRET` |
 | `REDIS_URL` | **Obligatoria.** Sostiene caché, bus de eventos y motor de workflows. Sin ella Medusa no arranca |
+| `REVALIDATE_SECRET` | **El mismo valor que en el storefront.** Con él el backend avisa al storefront de los cambios del catálogo. Sin él, los cambios tardan hasta 5 min en verse |
 
 > **Alternativa Brevo:** si en vez de Resend usas Brevo, configura `BREVO_API_KEY` y `BREVO_FROM` en lugar de las de Resend, y actívalo en `medusa-config.js` (ver sección _Proveedor de email_).
 
@@ -115,7 +116,7 @@ del JSON-LD de producto en `products/[handle]/page.tsx`.
 |---|---|
 | `NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY` | Clave publicable de Medusa (ver paso 4 abajo) |
 | `NEXT_PUBLIC_STRIPE_KEY` | Clave pública de Stripe (empieza con `pk_live_...`) |
-| `REVALIDATE_SECRET` | Secret para revalidación de caché de Next.js |
+| `REVALIDATE_SECRET` | Secret para revalidación de caché de Next.js. **El mismo valor que en `medusa/.env`** |
 | `NEXT_PUBLIC_BASE_URL` | URL pública del storefront en producción |
 | `NEXT_PUBLIC_INSTAGRAM_URL` | URL de tu perfil de Instagram (o `#` si no aplica) |
 

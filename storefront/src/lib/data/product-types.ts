@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { CACHE_TAGS, CATALOG_TTL } from "@lib/cache-tags"
 import { HttpTypes, PaginatedResponse } from "@medusajs/types"
 
 export const getProductTypesList = async function (
@@ -14,8 +15,7 @@ export const getProductTypesList = async function (
       }>
     >("/store/custom/product-types", {
       query: { limit, offset, fields: fields ? fields.join(",") : undefined },
-      next: { tags: ["product-types"] },
-      cache: "force-cache",
+      next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.productTypes] },
     })
     .then(({ product_types, count }) => ({
       productTypes: product_types,
@@ -34,8 +34,7 @@ export const getProductTypeByHandle = async function (
       }>
     >("/store/custom/product-types", {
       query: { handle, limit: 1 },
-      next: { tags: ["product-types"] },
-      cache: "force-cache",
+      next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.productTypes] },
     })
     .then(({ product_types }) => product_types[0])
 }

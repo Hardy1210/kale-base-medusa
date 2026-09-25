@@ -532,7 +532,8 @@ es opcional y ninguno es caro — lo caro es saltárselo.
 - [ ] Secretos distintos entre local y producción, y distintos por cliente
 - [ ] `.env` **no** commiteado (ya está en `.gitignore`, verifícalo con `git log -- medusa/.env`)
 - [ ] Ninguna clave secreta en variables `NEXT_PUBLIC_*` — **son públicas en el navegador**
-- [ ] `REVALIDATE_SECRET` definido y no trivial
+- [ ] `REVALIDATE_SECRET` definido, no trivial y **con el mismo valor en el backend y
+      en el storefront** (si difieren, el storefront rechaza los avisos con 401)
 - [ ] Claves de API con el mínimo alcance: token R2 solo a su bucket, API key de Resend
       solo de envío
 

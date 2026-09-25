@@ -1,4 +1,5 @@
 import { sdk } from "@lib/config"
+import { CACHE_TAGS, CATALOG_TTL } from "@lib/cache-tags"
 import { getProductsList } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 
@@ -7,8 +8,7 @@ export const retrieveCollection = async function (id: string) {
     .fetch<{ collection: HttpTypes.StoreCollection }>(
       `/store/collections/${id}`,
       {
-        next: { tags: ["collections"] },
-        cache: "force-cache",
+        next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.collection(id)] },
       }
     )
     .then(({ collection }) => collection)
@@ -25,8 +25,7 @@ export const getCollectionsList = async function (
       count: number
     }>("/store/collections", {
       query: { limit, offset, fields: fields ? fields.join(",") : undefined },
-      next: { tags: ["collections"] },
-      cache: "force-cache",
+      next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.collections] },
     })
     .then(({ collections }) => ({ collections, count: collections.length }))
 }
@@ -42,8 +41,10 @@ export const getCollectionByHandle = async function (
         fields: fields ? fields.join(",") : undefined,
         limit: 1,
       },
-      next: { tags: ["collections"] },
-      cache: "force-cache",
+      next: {
+        revalidate: CATALOG_TTL,
+        tags: [CACHE_TAGS.collectionHandle(handle)],
+      },
     })
     .then(({ collections }) => collections[0])
 }

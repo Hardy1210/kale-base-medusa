@@ -3,7 +3,71 @@ import { HttpTypes } from "@medusajs/types"
 import { getRegion } from "@lib/data/regions"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { sortProducts } from "@lib/util/sort-products"
+import { CACHE_TAGS, CATALOG_TTL, STOCK_TTL } from "@lib/cache-tags"
 
+type VariantStock = Pick<
+  HttpTypes.StoreProductVariant,
+  "manage_inventory" | "inventory_quantity"
+>
+
+/**
+ * Stock de las variantes, en una petición aparte del catálogo y con un TTL
+ * corto. Así las ventas no tienen que invalidar la caché del catálogo.
+ *
+ * Medusa solo calcula `inventory_quantity` si se pide también
+ * `variants.manage_inventory`.
+ */
+export const getVariantsStock = async function (
+  productIds: string[]
+): Promise<Map<string, VariantStock>> {
+  const stock = new Map<string, VariantStock>()
+
+  if (!productIds.length) {
+    return stock
+  }
+
+  const { products } = await sdk.client.fetch<{
+    products: HttpTypes.StoreProduct[]
+  }>(`/store/products`, {
+    query: {
+      id: productIds,
+      limit: productIds.length,
+      fields:
+        "id,variants.id,variants.manage_inventory,+variants.inventory_quantity",
+    },
+    next: { revalidate: STOCK_TTL },
+  })
+
+  for (const product of products) {
+    for (const variant of product.variants ?? []) {
+      stock.set(variant.id, {
+        manage_inventory: variant.manage_inventory,
+        inventory_quantity: variant.inventory_quantity,
+      })
+    }
+  }
+
+  return stock
+}
+
+function withStock(
+  products: HttpTypes.StoreProduct[],
+  stock: Map<string, VariantStock>
+): HttpTypes.StoreProduct[] {
+  return products.map((product) => ({
+    ...product,
+    variants:
+      product.variants?.map((variant) => ({
+        ...variant,
+        ...stock.get(variant.id),
+      })) ?? null,
+  }))
+}
+
+/**
+ * Productos por id, con precios y stock. Lo usan las acciones de la ficha y
+ * los artículos del carrito, que necesitan la cantidad disponible.
+ */
 export const getProductsById = async function ({
   ids,
   regionId,
@@ -11,19 +75,28 @@ export const getProductsById = async function ({
   ids: string[]
   regionId: string
 }) {
-  return sdk.client
-    .fetch<{ products: HttpTypes.StoreProduct[] }>(`/store/products`, {
-      query: {
-        id: ids,
-        region_id: regionId,
-        fields: "*variants.calculated_price,+variants.inventory_quantity",
-      },
-      next: { tags: ["products"] },
-      cache: "force-cache",
-    })
-    .then(({ products }) => products)
+  const [{ products }, stock] = await Promise.all([
+    sdk.client.fetch<{ products: HttpTypes.StoreProduct[] }>(
+      `/store/products`,
+      {
+        query: {
+          id: ids,
+          region_id: regionId,
+          fields: "*variants.calculated_price",
+        },
+        next: { revalidate: CATALOG_TTL, tags: ids.map(CACHE_TAGS.product) },
+      }
+    ),
+    getVariantsStock(ids),
+  ])
+
+  return withStock(products, stock)
 }
 
+/**
+ * Ficha de producto, sin stock: quien lo necesite lo pide con
+ * `getVariantsStock`.
+ */
 export const getProductByHandle = async function (
   handle: string,
   regionId: string
@@ -33,13 +106,18 @@ export const getProductByHandle = async function (
       query: {
         handle,
         region_id: regionId,
-        fields: "*variants.calculated_price,+variants.inventory_quantity",
+        fields: "*variants.calculated_price",
       },
-      next: { tags: ["products"] },
+      next: {
+        revalidate: CATALOG_TTL,
+        tags: [CACHE_TAGS.productHandle(handle)],
+      },
     })
     .then(({ products }) => products[0])
 }
 
+// Un cambio de material o color afecta a todas las fichas (`fashion`); uno en
+// las variantes del producto, solo a la suya (`product-handle:<handle>`).
 export const getProductFashionDataByHandle = async function (handle: string) {
   return sdk.client.fetch<{
     materials: {
@@ -53,8 +131,10 @@ export const getProductFashionDataByHandle = async function (handle: string) {
     }[]
   }>(`/store/custom/fashion/${handle}`, {
     method: "GET",
-    next: { tags: ["products"] },
-    cache: "force-cache",
+    next: {
+      revalidate: CATALOG_TTL,
+      tags: [CACHE_TAGS.fashion, CACHE_TAGS.productHandle(handle)],
+    },
   })
 }
 
@@ -93,8 +173,7 @@ export const getProductsList = async function ({
           fields: "*variants.calculated_price",
           ...queryParams,
         },
-        next: { tags: ["products"] },
-        cache: "force-cache",
+        next: { revalidate: CATALOG_TTL, tags: [CACHE_TAGS.products] },
       }
     )
     .then(({ products, count }) => {
@@ -192,7 +271,7 @@ export const searchProducts = async function ({
           region_id: region.id,
           fields: "*variants.calculated_price",
         },
-        next: { tags: ["products"] },
+        next: { tags: [CACHE_TAGS.products] },
       }
     )
     .then(({ products, count }) => ({ products, count }))
